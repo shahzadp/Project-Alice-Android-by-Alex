@@ -24,19 +24,19 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 /**
- * NativeActivity com o minimo que o C++ nao consegue fazer sozinho:
- * pedir acesso aos arquivos, abrir o seletor de pastas do Android e mostrar
- * mensagens. Todo o resto (janela, EGL, toque, jogo) continua na libAlice.so.
+ * NativeActivity with the minimum that C++ cannot do on its own:
+ * requesting file access, opening Android's folder picker and showing
+ * messages. Everything else (window, EGL, touch, game) stays in libAlice.so.
  *
- * Os metodos publicos sao chamados pelo C++ (entry_point_android.cpp), de
- * outra thread -- por isso tudo que mexe com a interface vai por runOnUiThread.
+ * The public methods are called from C++ (entry_point_android.cpp), from
+ * another thread -- that is why everything that touches the UI goes through runOnUiThread.
  */
 public class AliceActivity extends NativeActivity {
 	private static final int REQUEST_PICK_FOLDER = 1;
 
-	// a NativeActivity carrega a .so por conta propria (dlopen), o que nao
-	// registra os metodos "native" desta classe no JNI; carregar tambem pelo
-	// System.loadLibrary resolve (e a mesma .so, nao carrega duas vezes)
+	// NativeActivity loads the .so on its own (dlopen), which does not
+	// register this class's "native" methods in the JNI; loading it also through
+	// System.loadLibrary solves it (it is the same .so, it does not load twice)
 	static {
 		System.loadLibrary("Alice");
 	}
@@ -60,8 +60,8 @@ public class AliceActivity extends NativeActivity {
 		hideSystemBars();
 	}
 
-	// O sistema mostra as barras de novo em varias situacoes (dialogos,
-	// teclado, voltar de outro app); escondidas de novo ao recuperar o foco.
+	// The system shows the bars again in several situations (dialogs,
+	// keyboard, coming back from another app); hidden again when focus is regained.
 	@Override
 	public void onWindowFocusChanged(boolean hasFocus) {
 		super.onWindowFocusChanged(hasFocus);
@@ -70,9 +70,9 @@ public class AliceActivity extends NativeActivity {
 	}
 
 	/**
-	 * Modo imersivo: esconde as barras de status e de navegacao (que em
-	 * paisagem ficam na lateral, por cima do jogo). Deslizar a partir da borda
-	 * as mostra por alguns segundos, sem tirar o jogo da tela cheia.
+	 * Immersive mode: hides the status and navigation bars (which in
+	 * landscape sit on the side, over the game). Swiping from the edge
+	 * shows them for a few seconds, without taking the game out of fullscreen.
 	 */
 	private void hideSystemBars() {
 		Window window = getWindow();
@@ -92,26 +92,26 @@ public class AliceActivity extends NativeActivity {
 			if(Environment.isExternalStorageManager()) {
 				launchFolderPicker();
 			} else {
-				showFolderDialog("Sem a permissao \"Acesso a todos os arquivos\" o jogo nao consegue ler a pasta do Victoria 2.");
+				showFolderDialog("Without the \"All files access\" permission the game cannot read the Victoria 2 folder.");
 			}
 		}
 	}
 
-	/** Chamado pelo C++ quando nao ha pasta do jogo valida configurada. */
+	/** Called by C++ when no valid game folder is configured. */
 	public void requestGameFolder(final String reason) {
 		runOnUiThread(() -> showFolderDialog(reason));
 	}
 
 	/**
-	 * Janela de carregamento, pedida pelo C++ (change_cursor "ocupado") antes
-	 * de trabalhos que travam a thread do jogo -- ex.: criar a interface ao
-	 * entrar na partida. Ela e desenhada pelo sistema, entao aparece e se anima
-	 * mesmo com o jogo travado, e enquanto esta aberta os toques vao para ela:
-	 * sem isso o Android mostrava "o app nao esta respondendo". So aparece se o
-	 * trabalho passar de 300 ms, para carregamentos rapidos nao piscarem.
-	 * Tambem mostra as etapas da abertura do app (extrair arquivos, montar e
-	 * carregar o cenario): com ela aberta, uma mensagem nova so troca o texto.
-	 * Mensagem vazia fecha.
+	 * Loading window, requested by C++ (change_cursor "busy") before
+	 * jobs that block the game thread -- e.g.: creating the interface when
+	 * entering the game. It is drawn by the system, so it appears and animates
+	 * even with the game frozen, and while it is open the touches go to it:
+	 * without that Android showed "the app is not responding". It only appears if the
+	 * job takes more than 300 ms, so quick loads do not flicker.
+	 * It also shows the app startup steps (extracting files, assembling and
+	 * loading the scenario): with it open, a new message just replaces the text.
+	 * An empty message closes it.
 	 */
 	public void setLoading(final String message) {
 		runOnUiThread(() -> {
@@ -128,7 +128,7 @@ public class AliceActivity extends NativeActivity {
 				}
 				return;
 			}
-			// aberta ou para abrir: so troca o texto (etapas do carregamento)
+			// open or about to open: just replaces the text (loading steps)
 			loadingMessage = message;
 			if(loadingDialog != null) {
 				loadingText.setText(message);
@@ -165,8 +165,8 @@ public class AliceActivity extends NativeActivity {
 			.setCancelable(false)
 			.create();
 		loadingDialog.setCanceledOnTouchOutside(false);
-		// Uma janela de dialogo nova traz as barras do sistema de volta. Aberta
-		// sem foco, ja com as barras escondidas, e so depois recebe o foco.
+		// A new dialog window brings the system bars back. Opens
+		// without focus, with the bars already hidden, and only then receives focus.
 		Window window = loadingDialog.getWindow();
 		if(window != null)
 			window.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
@@ -182,10 +182,10 @@ public class AliceActivity extends NativeActivity {
 	}
 
 	/**
-	 * Contador de desempenho (ligado com toque de tres dedos), atualizado pela
-	 * thread nativa uma vez por segundo. Fica numa janela propria por cima do
-	 * jogo, porque a NativeActivity desenha direto na superficie e nao mostra
-	 * views comuns. Nao recebe toques. Texto vazio fecha.
+	 * Performance counter (turned on with a three-finger touch), updated by the
+	 * native thread once per second. It sits in its own window on top of the
+	 * game, because the NativeActivity draws straight to the surface and does not show
+	 * regular views. It receives no touches. An empty text closes it.
 	 */
 	public void setStats(final String text) {
 		runOnUiThread(() -> {
@@ -217,7 +217,7 @@ public class AliceActivity extends NativeActivity {
 		});
 	}
 
-	/** Mensagem curta na tela (ex.: "Criando o cenario..."). */
+	/** Short message on screen (e.g.: "Creating the scenario..."). */
 	public void showMessage(final String message) {
 		runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
 	}
@@ -225,23 +225,23 @@ public class AliceActivity extends NativeActivity {
 	private void showFolderDialog(String reason) {
 		if(folderDialog != null && folderDialog.isShowing())
 			folderDialog.dismiss();
-		String message = "O Project Alice precisa dos arquivos do Victoria 2 (com as expansoes).\n\n"
-			+ "Copie a pasta do jogo para o aparelho e escolha-a na proxima tela "
-			+ "(a pasta que contem \"common\", \"map\" e \"gfx\").";
+		String message = "Project Alice needs the Victoria 2 files (with the expansions).\n\n"
+			+ "Copy the game folder to the device and choose it on the next screen "
+			+ "(the folder that contains \"common\", \"map\" and \"gfx\").";
 		if(reason != null && !reason.isEmpty())
 			message = reason + "\n\n" + message;
 		folderDialog = new AlertDialog.Builder(this)
-			.setTitle("Pasta do Victoria 2")
+			.setTitle("Victoria 2 folder")
 			.setMessage(message)
 			.setCancelable(false)
-			.setPositiveButton("Escolher pasta", (d, w) -> ensureAccessThenPick())
-			.setNegativeButton("Sair", (d, w) -> finish())
+			.setPositiveButton("Choose folder", (d, w) -> ensureAccessThenPick())
+			.setNegativeButton("Quit", (d, w) -> finish())
 			.show();
 	}
 
 	private void ensureAccessThenPick() {
-		// minSdk 31: o acesso direto (caminhos de arquivo, que o C++ usa) a
-		// pastas fora do app exige "Acesso a todos os arquivos"
+		// minSdk 31: direct access (file paths, which C++ uses) to
+		// folders outside the app requires "All files access"
 		if(Environment.isExternalStorageManager()) {
 			launchFolderPicker();
 			return;
@@ -260,7 +260,7 @@ public class AliceActivity extends NativeActivity {
 		try {
 			startActivityForResult(intent, REQUEST_PICK_FOLDER);
 		} catch(Exception e) {
-			showFolderDialog("Nao foi possivel abrir o seletor de pastas deste aparelho.");
+			showFolderDialog("Could not open this device's folder picker.");
 		}
 	}
 
@@ -270,12 +270,12 @@ public class AliceActivity extends NativeActivity {
 		if(requestCode != REQUEST_PICK_FOLDER)
 			return;
 		if(resultCode != RESULT_OK || data == null || data.getData() == null) {
-			showFolderDialog("Nenhuma pasta foi escolhida.");
+			showFolderDialog("No folder was chosen.");
 			return;
 		}
 		String path = treeUriToPath(data.getData());
 		if(path == null) {
-			showFolderDialog("Escolha uma pasta do armazenamento do aparelho ou do cartao SD (nao de um servico na nuvem).");
+			showFolderDialog("Choose a folder from the device storage or the SD card (not from a cloud service).");
 			return;
 		}
 		nativeOnGameFolderPicked(path);
@@ -284,7 +284,7 @@ public class AliceActivity extends NativeActivity {
 	/**
 	 * content://com.android.externalstorage.documents/tree/primary%3AGames%2FVictoria%202
 	 *   -> /storage/emulated/0/Games/Victoria 2
-	 * Cartao SD ("XXXX-XXXX:pasta") -> /storage/XXXX-XXXX/pasta
+	 * SD card ("XXXX-XXXX:folder") -> /storage/XXXX-XXXX/folder
 	 */
 	static String treeUriToPath(Uri uri) {
 		if(!"com.android.externalstorage.documents".equals(uri.getAuthority()))

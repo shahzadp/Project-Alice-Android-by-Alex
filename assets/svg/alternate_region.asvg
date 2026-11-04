@@ -3,19 +3,23 @@
 	viewBox = "0 0 [[W;1000;0]] [[H;1000;0]] " 
 	width = "[[W;1000;0]]" 
 	height = "[[H;1000;0]]" >  
-	
+
+	<!-- Victoria II style table row: warm parchment band with a hairline rule
+	     along the bottom. This is the background of the "alternate window"
+	     template, which the budget window uses for every income/expense row and
+	     for the column header rows.
+
+	     Offsets are asvg units: 62.5 units = 1 px on the standard 8 px grid. -->
+
 	<defs>
-		<pattern id="bgfill" x="0" y="0" width="[[P;64;0]]" height="[[P;64;0]]" patternUnits="userSpaceOnUse" >
-			<image preserveAspectRatio="none" href="blue_watercolor.png" width="[[P;64;0]]" height="[[P;64;0]]"  />
-		</pattern>
-		<linearGradient id="Gradient">
-			<stop offset="0" stop-color="dimgray" />
-			<stop offset="1" stop-color="white" />
+		<linearGradient id="rowband" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#d5ccb8" />
+			<stop offset="0.5" stop-color="#c9bfa7" />
+			<stop offset="1" stop-color="#b9ae93" />
 		</linearGradient>
-		<mask id="Mask">
-			<rect x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" fill="url(#Gradient)" />
-		</mask>
 	</defs>
-	<rect fill="url(#bgfill)" x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]] mask="url(#Mask)" />
-	
+
+	<rect x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" fill="url(#rowband)" />
+	<rect x="0" y="0" width="[[W;1000;0]]" height="[[P;1;0]]" fill="#efe9dc" fill-opacity="0.5" />
+	<rect x="0" y="[[H;1000;-62.5]]" width="[[W;1000;0]]" height="[[P;1;0]]" fill="#9d9277" fill-opacity="0.65" />
 </svg>

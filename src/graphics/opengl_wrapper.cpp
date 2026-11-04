@@ -46,10 +46,10 @@ static std::string shader_prefix = "";
 
 void set_shader_prefix(std::string_view source) {
 #ifdef __ANDROID__
-	// Os shaders sao escritos para "#version 460 core" (ver _geometry.glsl), mas
-	// tambem sao GLSL ES 3.20 valido. No GLES troca as linhas #version/#extension
-	// do prefixo por um cabecalho ES (#version precisa ser a primeira coisa) e
-	// declara a precisao padrao, obrigatoria no ES para float e samplers.
+	// The shaders are written for "#version 460 core" (see _geometry.glsl), but
+	// they are also valid GLSL ES 3.20. Under GLES the #version/#extension lines
+	// of the prefix are replaced by an ES header (#version has to come first) and
+	// the default precision is declared, which ES requires for float and samplers.
 	shader_prefix =
 		"#version 320 es\n"
 		"precision highp float;\n"

@@ -3,21 +3,20 @@
 	viewBox = "0 0 [[W;1000;0]] [[H;1000;0]] " 
 	width = "[[W;1000;0]]" 
 	height = "[[H;1000;0]]" >  
-	
+
+	<!-- Victoria II style table column header: maroon banner fading downwards,
+	     with a gold rule along the bottom edge.
+
+	     Offsets are asvg units: 62.5 units = 1 px on the standard 8 px grid. -->
+
 	<defs>
-		<pattern id="lbfill" x="0" y="0" width="[[P;128;0]]" height="[[P;128;0]]" patternUnits="userSpaceOnUse" >
-			<image href="lbwc.png" height="[[P;128;0]]" width="[[P;128;0]]" />
-		</pattern>
-		<radialGradient id="bottomfade" cx="0.5" cy="1">
-			<stop stop-color="white" offset="0%" />
-			<stop stop-color="white" offset="33%" />
-			<stop stop-color="black" offset="100%" />
-		</radialGradient>
-		<mask  id="fademask">
-			<rect  x="0" y="0" fill="url(#bottomfade)" width="[[W;1000;0]]" height="[[H;1000;0]]" />
-		</mask>
+		<linearGradient id="headerfade" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#4a2230" stop-opacity="1" />
+			<stop offset="0.65" stop-color="#4a2230" stop-opacity="0.85" />
+			<stop offset="1" stop-color="#33161f" stop-opacity="0.25" />
+		</linearGradient>
 	</defs>
-	<g mask="url(#fademask)">
-		<rect fill="url(#lbfill)" x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" />
-	</g>
+
+	<rect x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" fill="url(#headerfade)" />
+	<rect x="0" y="[[H;1000;-62.5]]" width="[[W;1000;0]]" height="[[P;1;0]]" fill="#b39a63" fill-opacity="0.85" />
 </svg>

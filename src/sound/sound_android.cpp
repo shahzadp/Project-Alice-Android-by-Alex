@@ -1,15 +1,16 @@
 // sound_android.cpp
 //
-// Praticamente identico ao sound_nix.cpp -- a engine (miniaudio) e o wrapper
-// (sound_impl / audio_instance, de sound_nix.hpp) ja sao multiplataforma.
-// A unica coisa que muda de fato e qual backend nativo do miniaudio habilitar:
-//  - OpenSL ES: um dos backends nativos do Android -- diferente do _nix.cpp,
-//    aqui ele fica HABILITADO (nao definimos MA_NO_OPENSL).
-//  - AAudio: o miniaudio tenta usar automaticamente em NDK/API level recentes,
-//    sem precisar de define extra.
-//  - PulseAudio/ALSA/JACK: nao existem no Android (nao ha libasound/libpulse
-//    no NDK), entao ficam desabilitados aqui (o sound_nix.cpp original conta
-//    com eles estarem disponiveis via miniaudio nao os desabilitar).
+// Practically identical to sound_nix.cpp -- the engine (miniaudio) and the
+// wrapper (sound_impl / audio_instance, from sound_nix.hpp) are already
+// cross-platform. The only real difference is which native miniaudio backend to
+// enable:
+//  - OpenSL ES: one of the Android native backends -- unlike _nix.cpp, it is
+//    ENABLED here (we do not define MA_NO_OPENSL).
+//  - AAudio: miniaudio tries to use it automatically on recent NDK/API levels,
+//    no extra define needed.
+//  - PulseAudio/ALSA/JACK: do not exist on Android (there is no libasound/libpulse
+//    in the NDK), so they stay disabled here (the original sound_nix.cpp relies
+//    on miniaudio having them available rather than disabling them).
 #include "sound.hpp"
 #include "system_state.hpp"
 

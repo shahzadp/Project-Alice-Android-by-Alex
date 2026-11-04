@@ -1,14 +1,14 @@
 // glew.h (Android)
 //
-// Substituto do GLEW para o build Android. O codigo do jogo inclui "glew.h" em
-// varios lugares; no desktop isso vem do GLEW (carregador de extensoes do
-// OpenGL). No Android as funcoes GLES vem direto do sistema (libGLESv3), entao
-// este header inclui os headers GLES 3.2 do NDK e implementa, em cima do GLES,
-// as poucas funcoes do OpenGL de desktop que o jogo usa e o GLES nao tem.
+// Substitute for GLEW in the Android build. The game code includes "glew.h" in
+// several places; on desktop that comes from GLEW (OpenGL extension loader).
+// On Android the GLES functions come straight from the system (libGLESv3), so
+// this header includes the NDK's GLES 3.2 headers and implements, on top of GLES,
+// the few desktop OpenGL functions the game uses and GLES does not have.
 //
-// Os shaders sao GLSL de desktop (#version 460 core) adaptados para tambem
-// compilar como GLSL ES 3.20; o cabecalho ES e colocado no lugar do de desktop
-// por ogl::set_shader_prefix (opengl_wrapper.cpp).
+// The shaders are desktop GLSL (#version 460 core) adapted to also
+// compile as GLSL ES 3.20; the ES header is put in place of the desktop one
+// by ogl::set_shader_prefix (opengl_wrapper.cpp).
 
 #pragma once
 
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// --- constantes que so existem no OpenGL de desktop ---------------------------
+// --- constants that only exist in desktop OpenGL ------------------------------
 
 #ifndef GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER
 #define GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER 0x8CDB
@@ -27,22 +27,22 @@
 #ifndef GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER
 #define GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER 0x8CDC
 #endif
-// GL_EXT_disjoint_timer_query (so usado pelo contador de FPS). Sem a extensao o
-// glBeginQuery gera GL_INVALID_ENUM e o contador fica sem o tempo de GPU.
+// GL_EXT_disjoint_timer_query (only used by the FPS counter). Without the extension
+// glBeginQuery generates GL_INVALID_ENUM and the counter has no GPU time.
 #ifndef GL_TIME_ELAPSED
 #define GL_TIME_ELAPSED 0x88BF
 #endif
 #ifndef GL_FIRST_VERTEX_CONVENTION
 #define GL_FIRST_VERTEX_CONVENTION 0x8E4D
 #endif
-// GLES 3 so tem primitive restart com indice FIXO (o maximo do tipo: 0xFFFF para
-// GL_UNSIGNED_SHORT), ligado por GL_PRIMITIVE_RESTART_FIXED_INDEX. E exatamente o
-// indice que o mapa usa (glPrimitiveRestartIndex(numeric_limits<uint16_t>::max())).
+// GLES 3 only has primitive restart with a FIXED index (the type's maximum: 0xFFFF for
+// GL_UNSIGNED_SHORT), enabled by GL_PRIMITIVE_RESTART_FIXED_INDEX. That is exactly the
+// index the map uses (glPrimitiveRestartIndex(numeric_limits<uint16_t>::max())).
 #ifndef GL_PRIMITIVE_RESTART
 #define GL_PRIMITIVE_RESTART GL_PRIMITIVE_RESTART_FIXED_INDEX
 #endif
-// GLES nao tem esses "caps": MSAA depende so do framebuffer ser multisample, e
-// nao existe suavizacao de linha. glEnable/glDisable deles viram no-op (abaixo).
+// GLES has no such "caps": MSAA depends only on the framebuffer being multisample, and
+// there is no line smoothing. glEnable/glDisable on them become no-ops (below).
 #ifndef GL_MULTISAMPLE
 #define GL_MULTISAMPLE 0x809D
 #endif
@@ -50,7 +50,7 @@
 #define GL_LINE_SMOOTH 0x0B20
 #endif
 
-// --- funcoes do OpenGL de desktop implementadas com GLES -----------------------
+// --- desktop OpenGL functions implemented with GLES ---------------------------
 
 inline void glClearDepth(GLdouble depth) {
 	glClearDepthf(GLfloat(depth));
@@ -61,18 +61,18 @@ inline void glDepthRange(GLdouble n, GLdouble f) {
 }
 
 inline void glPrimitiveRestartIndex(GLuint) {
-	// ver GL_PRIMITIVE_RESTART acima -- o indice no GLES e sempre o maximo do tipo
+	// see GL_PRIMITIVE_RESTART above -- in GLES the index is always the type's maximum
 }
 
 inline void glProvokingVertex(GLenum) {
-	// GLES usa sempre o ULTIMO vertice como provocante e o jogo pede o primeiro.
-	// So importa para varyings "flat", e os unicos (map_font: indice/opacidade do
-	// glifo; textured_line_b: provincia da borda) sao iguais em todos os vertices
-	// de cada primitiva -- entao o resultado e o mesmo.
+	// GLES always uses the LAST vertex as provoking and the game asks for the first.
+	// It only matters for "flat" varyings, and the only ones (map_font: glyph
+	// index/opacity; textured_line_b: border province) are the same on all vertices
+	// of each primitive -- so the result is the same.
 }
 
-// O jogo so usa glBufferStorage com flags == 0 (buffer imutavel, sem map),
-// que e equivalente a um glBufferData estatico.
+// The game only uses glBufferStorage with flags == 0 (immutable buffer, no map),
+// which is equivalent to a static glBufferData.
 inline void glBufferStorage(GLenum target, GLsizeiptr size, const void* data, GLbitfield) {
 	glBufferData(target, size, data, GL_STATIC_DRAW);
 }
@@ -84,7 +84,7 @@ inline void glMultiDrawArrays(GLenum mode, const GLint* first, const GLsizei* co
 	}
 }
 
-// indirect = deslocamento dentro do GL_DRAW_INDIRECT_BUFFER ligado (GLES 3.1+)
+// indirect = offset inside the bound GL_DRAW_INDIRECT_BUFFER (GLES 3.1+)
 inline void glMultiDrawArraysIndirect(GLenum mode, const void* indirect, GLsizei drawcount, GLsizei stride) {
 	GLsizei const step = stride != 0 ? stride : GLsizei(4 * sizeof(GLuint));
 	for(GLsizei i = 0; i < drawcount; ++i) {
@@ -92,7 +92,7 @@ inline void glMultiDrawArraysIndirect(GLenum mode, const void* indirect, GLsizei
 	}
 }
 
-// GLES nao aceita formato nao-dimensionado (GL_RGBA) em texturas multisample
+// GLES does not accept an unsized format (GL_RGBA) in multisample textures
 inline void glTexImage2DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations) {
 	if(internalformat == GL_RGBA)
 		internalformat = GL_RGBA8;
@@ -117,7 +117,7 @@ inline GLsizei bytes_per_pixel(GLenum format, GLenum type) {
 	}
 }
 
-// liga a textura (GL_TEXTURE_2D) num framebuffer temporario, para ler/limpar
+// binds the texture (GL_TEXTURE_2D) to a temporary framebuffer, to read/clear it
 struct scoped_texture_fbo {
 	GLint previous_read = 0;
 	GLint previous_draw = 0;
@@ -146,7 +146,7 @@ inline void texture_size(GLuint texture, GLint level, GLint& w, GLint& h) {
 }
 } // namespace android_gl_detail
 
-// So para texturas GL_TEXTURE_2D (o unico uso no jogo).
+// Only for GL_TEXTURE_2D textures (the only use in the game).
 inline void glClearTexImage(GLuint texture, GLint level, GLenum format, GLenum type, const void* data) {
 	GLint w = 0, h = 0;
 	android_gl_detail::texture_size(texture, level, w, h);
@@ -171,8 +171,8 @@ inline void glClearTexImage(GLuint texture, GLint level, GLenum format, GLenum t
 	free(pixels);
 }
 
-// GLES nao le texturas direto; le pelo framebuffer com glReadPixels.
-// So para texturas GL_TEXTURE_2D com formato legivel como cor (RGBA8 etc.).
+// GLES does not read textures directly; it reads through the framebuffer with glReadPixels.
+// Only for GL_TEXTURE_2D textures with a format readable as color (RGBA8 etc.).
 inline void glGetTextureImage(GLuint texture, GLint level, GLenum format, GLenum type, GLsizei bufSize, void* pixels) {
 	GLint w = 0, h = 0;
 	android_gl_detail::texture_size(texture, level, w, h);
@@ -194,7 +194,7 @@ inline void glGetQueryObjectiv(GLuint id, GLenum pname, GLint* params) {
 	*params = GLint(value);
 }
 
-// --- glEnable/glDisable sem os caps que nao existem no GLES --------------------
+// --- glEnable/glDisable without the caps that do not exist in GLES -------------
 
 inline void android_gl_enable(GLenum cap) {
 	if(cap == GL_MULTISAMPLE || cap == GL_LINE_SMOOTH)
@@ -209,10 +209,10 @@ inline void android_gl_disable(GLenum cap) {
 #define glEnable android_gl_enable
 #define glDisable android_gl_disable
 
-// --- glTexImage2D: combinacoes de formato que o GLES recusa --------------------
+// --- glTexImage2D: format combinations that GLES rejects -----------------------
 
-// O framebuffer de indices de provincia e criado com interno GL_RGB e dados
-// GL_RGBA (sem dados, so aloca). O GLES exige que o formato bata com o interno.
+// The province index framebuffer is created with internal GL_RGB and GL_RGBA
+// data (no data, just allocates). GLES requires the format to match the internal one.
 inline void android_gl_tex_image_2d(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void* pixels) {
 	if(internalformat == GL_RGB && format == GL_RGBA && pixels == nullptr)
 		format = GL_RGB;
@@ -220,12 +220,12 @@ inline void android_gl_tex_image_2d(GLenum target, GLint level, GLint internalfo
 }
 #define glTexImage2D android_gl_tex_image_2d
 
-// --- texturas S3TC (DXT1/3/5) ---------------------------------------------------
+// --- S3TC textures (DXT1/3/5) ---------------------------------------------------
 //
-// As .dds do Victoria 2 sao S3TC. GPUs de celular normalmente nao tem
-// GL_EXT_texture_compression_s3tc (Mali, PowerVR; parte das Adreno tem). Sem a
-// extensao, a textura e descomprimida para RGBA8 na hora de enviar -- o
-// resultado na tela e o mesmo, so ocupa mais memoria de video.
+// Victoria 2's .dds files are S3TC. Phone GPUs usually do not have
+// GL_EXT_texture_compression_s3tc (Mali, PowerVR; some Adreno do). Without the
+// extension, the texture is decompressed to RGBA8 when it is uploaded -- the
+// result on screen is the same, it just takes more video memory.
 
 namespace android_gl_detail {
 
@@ -255,7 +255,7 @@ inline bool has_s3tc_extension() {
 	return cached == 1;
 }
 
-// 5/6 bits -> 8 bits por replicacao de bits, como as GPUs fazem
+// 5/6 bits -> 8 bits by bit replication, as the GPUs do
 inline void rgb565(uint16_t c, uint8_t* out) {
 	uint8_t const r = uint8_t((c >> 11) & 31), g = uint8_t((c >> 5) & 63), b = uint8_t(c & 31);
 	out[0] = uint8_t((r << 3) | (r >> 2));
@@ -263,8 +263,8 @@ inline void rgb565(uint16_t c, uint8_t* out) {
 	out[2] = uint8_t((b << 3) | (b >> 2));
 }
 
-// bloco de cor (8 bytes) -> 16 pixels RGBA. four_color forca o modo de 4 cores
-// (sempre usado nos blocos de cor do DXT3/DXT5).
+// color block (8 bytes) -> 16 RGBA pixels. four_color forces the 4-color mode
+// (always used in the DXT3/DXT5 color blocks).
 inline void decode_color_block(uint8_t const* block, uint8_t* out_rgba, bool four_color, bool transparent_black) {
 	uint16_t const c0 = uint16_t(block[0] | (block[1] << 8));
 	uint16_t const c1 = uint16_t(block[2] | (block[3] << 8));
@@ -322,7 +322,7 @@ inline size_t s3tc_block_size(GLenum format) {
 	return (format == s3tc_rgb_dxt1 || format == s3tc_rgba_dxt1) ? 8 : 16;
 }
 
-// Descomprime uma imagem (ou uma camada) width x height. Devolve RGBA8 em malloc.
+// Decompresses an image (or a layer) width x height. Returns RGBA8 in malloc.
 inline uint8_t* decode_s3tc_image(GLenum format, GLsizei width, GLsizei height, uint8_t const* data) {
 	if(width <= 0 || height <= 0 || !data)
 		return nullptr;
@@ -372,8 +372,8 @@ inline size_t s3tc_image_size(GLenum format, GLsizei width, GLsizei height) {
 	return size_t((width + 3) / 4) * size_t((height + 3) / 4) * s3tc_block_size(format);
 }
 
-// o jogo pode deixar GL_UNPACK_ROW_LENGTH etc. ligados (so valem para dados
-// nao comprimidos); o RGBA descomprimido e sempre compacto
+// the game may leave GL_UNPACK_ROW_LENGTH etc. enabled (they only apply to
+// uncompressed data); the decompressed RGBA is always tightly packed
 struct scoped_tight_unpack {
 	GLint row_length = 0, skip_rows = 0, skip_pixels = 0, alignment = 4, image_height = 0, skip_images = 0;
 	scoped_tight_unpack() {
@@ -418,7 +418,7 @@ inline void android_gl_compressed_tex_image_2d(GLenum target, GLint level, GLenu
 	free(rgba);
 }
 
-// camadas uma depois da outra, como o GL le os dados de glCompressedTexImage3D
+// layers one after the other, as GL reads the data from glCompressedTexImage3D
 inline void android_gl_compressed_tex_image_3d(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei imageSize, const void* data) {
 	using namespace android_gl_detail;
 	if(!is_s3tc(internalformat) || has_s3tc_extension()) {

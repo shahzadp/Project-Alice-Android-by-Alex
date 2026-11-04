@@ -271,8 +271,8 @@ add_executable(AliceExtra WIN32 EXCLUDE_FROM_ALL
 	"${PROJECT_SOURCE_DIR}/src/alice.rc"
 	${ASSET_FILES})
 elseif(ANDROID)
-# Android espera uma biblioteca compartilhada (.so) carregada via JNI/NativeActivity,
-# nao um executavel -- ela e empacotada dentro do APK no projeto Gradle (Fase 5)
+# Android expects a shared library (.so) loaded via JNI/NativeActivity,
+# not an executable -- it is packaged inside the APK in the Gradle project (Phase 5)
 add_library(Alice SHARED
 	${ALICE_SOURCE_BLOB}
 	${ALICE_CORE_SOURCES_LIST}
@@ -320,8 +320,8 @@ endif()
 # Include sub-projects.
 add_subdirectory(dependencies EXCLUDE_FROM_ALL)
 if(CMAKE_CROSSCOMPILING)
-	# ParserGenerator/DCONINTERFACEGEN rodam durante o build (geram .hpp) --
-	# nao dá pra compilá-los com o toolchain do NDK. Ver cmake/AliceHostTools.cmake.
+	# ParserGenerator/DCONINTERFACEGEN run during the build (they generate .hpp) --
+	# they cannot be compiled with the NDK toolchain. See cmake/AliceHostTools.cmake.
 	alice_import_host_tool(ParserGenerator)
 	alice_import_host_tool(DCONINTERFACEGEN)
 else()
@@ -448,16 +448,16 @@ else() # GCC or CLANG
 		target_compile_options(AliceCommon INTERFACE
 		-mavx2 -mfma )
 	elseif(ANDROID)
-		# ARM: sem flags de vetor x86 (-march=nehalem nao existe aqui)
+		# ARM: no x86 vector flags (-march=nehalem does not exist here)
 		target_compile_options(AliceCommon INTERFACE
 		-fno-fast-math -ffp-model=precise -ffp-contract=off )
-		# -mtune so muda a ordem/escolha de instrucoes para o Cortex-A76 (nucleo
-		# grande do Snapdragon 675/7xx/8xx e de muitos Dimensity/Exynos); o
-		# conjunto de instrucoes continua armv8-a, entao roda em qualquer arm64
+		# -mtune only changes the order/choice of instructions for the Cortex-A76 (big
+		# core of the Snapdragon 675/7xx/8xx and of many Dimensity/Exynos); the
+		# instruction set stays armv8-a, so it runs on any arm64
 		target_compile_options(AliceCommon INTERFACE -mtune=cortex-a76)
-		# o toolchain do NDK sempre poe -g; com -O3 o main.cpp (tudo num arquivo
-		# so) passa de 13 GB de memoria no compilador. No release os simbolos
-		# seriam removidos de qualquer jeito (android/collect-native-libs.sh).
+		# the NDK toolchain always adds -g; with -O3 main.cpp (everything in a single
+		# file) goes past 13 GB of memory in the compiler. In release the symbols
+		# would be removed anyway (android/collect-native-libs.sh).
 		target_compile_options(AliceCommon INTERFACE $<$<NOT:$<CONFIG:Debug>>:-g0>)
 	else()
 		target_compile_options(AliceCommon INTERFACE
@@ -484,19 +484,19 @@ if (WIN32)
 	target_link_libraries(AliceCommon INTERFACE Imm32)
 elseif(ANDROID)
 	target_link_libraries(AliceCommon INTERFACE dependency_tbb)
-	# sem glfw aqui -- ver dependencies/CMakeLists.txt e src/window/window_android.cpp
+	# no glfw here -- see dependencies/CMakeLists.txt and src/window/window_android.cpp
 	target_link_libraries(AliceCommon INTERFACE miniaudio)
 	target_link_libraries(AliceCommon INTERFACE dependency_icu)
-	# intrinsecas x86 (SSE/AVX) emuladas com NEON -- ver src/x86_compat/simde_x86.h
+	# x86 intrinsics (SSE/AVX) emulated with NEON -- see src/x86_compat/simde_x86.h
 	target_link_libraries(AliceCommon INTERFACE dependency_simde)
-	# NativeActivity: a glue do NDK fornece o ANativeActivity_onCreate que chama android_main
+	# NativeActivity: the NDK glue provides ANativeActivity_onCreate, which calls android_main
 	add_library(android_native_app_glue STATIC
 		${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 	target_include_directories(android_native_app_glue PUBLIC
 		${ANDROID_NDK}/sources/android/native_app_glue)
 	target_link_libraries(android_native_app_glue PUBLIC android log)
 	target_link_libraries(AliceCommon INTERFACE android_native_app_glue android log EGL GLESv3)
-	# sem isso o linker descarta ANativeActivity_onCreate (ninguem dentro da .so o referencia)
+	# without this the linker discards ANativeActivity_onCreate (nobody inside the .so references it)
 	target_link_options(AliceCommon INTERFACE "-u" "ANativeActivity_onCreate")
 else()
 	target_link_libraries(AliceCommon INTERFACE dependency_tbb)
@@ -536,7 +536,7 @@ target_include_directories(AliceCommon INTERFACE
 	${PROJECT_SOURCE_DIR}/src/lunasvg
 	"ankerl")
 if(ANDROID)
-	# glew.h substituto que inclui os headers GLES 3.2 do NDK
+	# replacement glew.h that includes the NDK's GLES 3.2 headers
 	target_include_directories(AliceCommon INTERFACE ${PROJECT_SOURCE_DIR}/src/graphics/android_gl)
 else()
 	target_include_directories(AliceCommon INTERFACE "${glew_SOURCE_DIR}/include/GL")
@@ -763,9 +763,9 @@ if(WIN32)
 	add_subdirectory(DbgAlice EXCLUDE_FROM_ALL)
 endif()
 if(NOT ANDROID)
-# O Launcher desktop (selecao de mods/pasta do jogo) tambem inclui GLFW direto
-# (src/launcher/launcher_main_nix.cpp) -- fica de fora do Android por enquanto;
-# uma tela equivalente no proprio app Android e coisa pra Fase 5.
+# The desktop Launcher (mod selection/game folder) also includes GLFW directly
+# (src/launcher/launcher_main_nix.cpp) -- it stays out of Android for now;
+# an equivalent screen in the Android app itself is a Phase 5 thing.
 add_subdirectory(Launcher)
 
 add_dependencies(launch_alice GENERATE_CONTAINER ParserGenerator)

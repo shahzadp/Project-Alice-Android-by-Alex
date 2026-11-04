@@ -38,16 +38,19 @@ struct budgetwindow_budget_header_t;
 struct budgetwindow_main_income_amount_t : public alice_ui::template_label {
 // BEGIN main::income_amount::variables
 // END
+	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 };
 struct budgetwindow_main_expenses_amount_t : public alice_ui::template_label {
 // BEGIN main::expenses_amount::variables
 // END
+	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 };
 struct budgetwindow_main_admin_eff_amount_t : public alice_ui::template_label {
 // BEGIN main::admin_eff_amount::variables
 // END
+	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	ui::tooltip_behavior has_tooltip(sys::state & state) noexcept override {
 		return ui::tooltip_behavior::variable_tooltip;
 	}
@@ -166,11 +169,13 @@ struct budgetwindow_main_debt_enable_t : public alice_ui::template_toggle_button
 struct budgetwindow_main_total_debt_amount_t : public alice_ui::template_label {
 // BEGIN main::total_debt_amount::variables
 // END
+	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 };
 struct budgetwindow_main_max_debt_amount_t : public alice_ui::template_label {
 // BEGIN main::max_debt_amount::variables
 // END
+	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 };
 struct budgetwindow_main_debt_chart_t : public ui::element_base {
@@ -313,6 +318,7 @@ struct budgetwindow_section_header_rrbutton_t : public alice_ui::template_icon_b
 struct budgetwindow_section_header_setting_amount_t : public alice_ui::template_label {
 // BEGIN section_header::setting_amount::variables
 // END
+	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 };
 struct budgetwindow_section_header_expand_button_t : public alice_ui::template_icon_button {
@@ -328,6 +334,7 @@ struct budgetwindow_section_header_expand_button_t : public alice_ui::template_i
 struct budgetwindow_section_header_total_amount_t : public alice_ui::template_label {
 // BEGIN section_header::total_amount::variables
 // END
+	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 };
 struct budgetwindow_section_header_min_setting_t : public alice_ui::template_label {
@@ -4489,4 +4496,59 @@ std::unique_ptr<ui::element_base> make_budgetwindow_budget_header(sys::state& st
 // BEGIN main::close_button::lbutton_action
 ////////////////////////////////////////	parent->set_visible(state, false);
 // END
+
+//
+// Victoria II style value tiles
+//
+// The compiled budget window declares its money values as plain text labels, so
+// by default they read as bare table cells. Victoria II (and the reference
+// layout this window is modelled on) prints each amount on a small cream "note"
+// tile with a dark rule around it, which is what makes the figures look like
+// money values. The window definition has no background element behind the
+// labels, so the tile is painted here, immediately before the label text, using
+// the same palette as assets/svg/window.asvg.
+//
+
+static void render_budget_value_tile(sys::state& state, int32_t x, int32_t y, int32_t w, int32_t h) {
+	if(w <= 2 || h <= 2)
+		return;
+
+	auto rect = [&](float rx, float ry, float rw, float rh, ogl::color3f c, float a) {
+		if(rw > 0.f && rh > 0.f)
+			ogl::render_alpha_colored_rect(state, rx, ry, rw, rh, c.r, c.g, c.b, a);
+	};
+
+	rect(float(x), float(y), float(w), float(h), ogl::color3f{ 0.290f, 0.231f, 0.165f }, 1.0f);                                  // dark rule
+	rect(float(x) + 1.f, float(y) + 1.f, float(w) - 2.f, float(h) - 2.f, ogl::color3f{ 0.937f, 0.910f, 0.839f }, 1.0f);          // cream face
+	rect(float(x) + 2.f, float(y) + 2.f, float(w) - 4.f, 1.f, ogl::color3f{ 0.780f, 0.706f, 0.549f }, 0.85f);                    // gold hairline
+}
+
+void budgetwindow_main_income_amount_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	render_budget_value_tile(state, x, y, base_data.size.x, base_data.size.y);
+	alice_ui::template_label::render(state, x, y);
+}
+void budgetwindow_main_expenses_amount_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	render_budget_value_tile(state, x, y, base_data.size.x, base_data.size.y);
+	alice_ui::template_label::render(state, x, y);
+}
+void budgetwindow_main_admin_eff_amount_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	render_budget_value_tile(state, x, y, base_data.size.x, base_data.size.y);
+	alice_ui::template_label::render(state, x, y);
+}
+void budgetwindow_main_total_debt_amount_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	render_budget_value_tile(state, x, y, base_data.size.x, base_data.size.y);
+	alice_ui::template_label::render(state, x, y);
+}
+void budgetwindow_main_max_debt_amount_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	render_budget_value_tile(state, x, y, base_data.size.x, base_data.size.y);
+	alice_ui::template_label::render(state, x, y);
+}
+void budgetwindow_section_header_setting_amount_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	render_budget_value_tile(state, x, y, base_data.size.x, base_data.size.y);
+	alice_ui::template_label::render(state, x, y);
+}
+void budgetwindow_section_header_total_amount_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	render_budget_value_tile(state, x, y, base_data.size.x, base_data.size.y);
+	alice_ui::template_label::render(state, x, y);
+}
 }

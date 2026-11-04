@@ -1,10 +1,11 @@
 // opengl_wrapper_android.cpp
 //
-// Equivalente ao opengl_wrapper_nix.cpp. La a criacao do contexto acontece no
-// glfwCreateWindow e aqui so se torna o contexto atual; no Android o contexto
-// e a superficie EGL sao criados pelo window_android.cpp (APP_CMD_INIT_WINDOW),
-// entao aqui tambem so garantimos que ele esta ativo nesta thread.
-// Nao ha GLEW: as funcoes GLES vem direto da libGLESv3 (ver android_gl/glew.h).
+// Equivalent to opengl_wrapper_nix.cpp. There the context is created by
+// glfwCreateWindow and this file only makes it current; on Android the context
+// and the EGL surface are created by window_android.cpp (APP_CMD_INIT_WINDOW),
+// so here we likewise only make sure it is current on this thread.
+// There is no GLEW: the GLES functions come straight from libGLESv3 (see
+// android_gl/glew.h).
 
 #include "opengl_wrapper.hpp"
 #include "system_state.hpp"

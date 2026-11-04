@@ -1,32 +1,32 @@
 // icu_android_compat.hpp
 //
-// ICU no Android. O app roda a partir do Android 11 (API 30), mas o NDK so
-// publica o ICU4C para apps a partir do Android 12 (API 31, libicu.so) -- e
-// mesmo la so um SUBCONJUNTO dele. No Android o Alice usa apenas a quebra de
-// texto (ubrk_*: caracteres, palavras e linhas) e a direcao do texto (ubidi_*).
+// ICU on Android. The app runs from Android 11 (API 30) on, but the NDK only
+// publishes ICU4C for apps from Android 12 on (API 31, libicu.so) -- and
+// even there only a SUBSET of it. On Android Alice uses only the text
+// breaking (ubrk_*: characters, words and lines) and the text direction (ubidi_*).
 //
-//  1) ubrk_*: nada e linkado com a libicu. Na primeira chamada, dlopen("libicu.so"):
-//     - Android 12+: usa o ICU do sistema (resultado identico ao de antes);
-//     - Android 11: nao ha ICU publico, entao usa a implementacao simples
-//       abaixo (alice_icu::fallback_*), boa para linguas com espaco entre as
-//       palavras (portugues, ingles, alemao, russo...). Chines/japones quebram
-//       entre ideogramas, de forma aproximada.
-//     As chamadas ubrk_* do jogo sao redirecionadas por #define para as
-//     funcoes alice_icu::* (este header vem depois de <unicode/ubrk.h>).
+//  1) ubrk_*: nothing is linked against libicu. On the first call, dlopen("libicu.so"):
+//     - Android 12+: uses the system ICU (result identical to before);
+//     - Android 11: there is no public ICU, so it uses the simple implementation
+//       below (alice_icu::fallback_*), good for languages with spaces between
+//       words (Portuguese, English, German, Russian...). Chinese/Japanese break
+//       between ideographs, in an approximate way.
+//     The game's ubrk_* calls are redirected by #define to the
+//     alice_icu::* functions (this header comes after <unicode/ubrk.h>).
 //
-//  2) ubrk_openBinaryRules()/ubrk_getBinaryRules() nao existem no NDK (o Alice
-//     usa isso pra pre-compilar as regras de quebra de linha/palavra/char uma
-//     vez e reusar). Aqui a gente reaproveita os MESMOS vetores
+//  2) ubrk_openBinaryRules()/ubrk_getBinaryRules() do not exist in the NDK (Alice
+//     uses that to pre-compile the line/word/char breaking rules once
+//     and reuse them). Here we reuse the SAME vectors
 //     compiled_ubrk_rules/compiled_char_ubrk_rules/compiled_word_ubrk_rules
-//     (ver fonts.hpp) só que, no Android, em vez de bytes de regra compilada,
-//     eles guardam [1 byte de UBreakIteratorType][bytes do locale em UTF-8].
-//     ubrk_openBinaryRules() abaixo decodifica isso e abre o iterador.
+//     (see fonts.hpp) except that, on Android, instead of compiled rule bytes,
+//     they hold [1 UBreakIteratorType byte][UTF-8 locale bytes].
+//     ubrk_openBinaryRules() below decodes that and opens the iterator.
 //
-//  3) <unicode/ubidi.h> nao existe no NDK -- bidi (texto arabe/hebraico da
-//     direita pra esquerda) nao tem equivalente nenhum la.
-//     TODO: dar suporte a RTL de verdade no Android (ex.: um port leve do
-//     algoritmo Unicode BiDi). Por enquanto o stub abaixo sempre trata o texto
-//     como uma unica run LTR -- locales RTL ficam com a ordem visual errada.
+//  3) <unicode/ubidi.h> does not exist in the NDK -- bidi (right-to-left
+//     Arabic/Hebrew text) has no equivalent there at all.
+//     TODO: give real RTL support on Android (e.g.: a light port of the
+//     Unicode BiDi algorithm). For now the stub below always treats the text
+//     as a single LTR run -- RTL locales get the wrong visual order.
 #pragma once
 
 #ifdef __ANDROID__
@@ -37,7 +37,7 @@
 
 #include <dlfcn.h>
 
-// ---- bidi: sempre uma unica run LTR (RTL desligado por enquanto) ----
+// ---- bidi: always a single LTR run (RTL off for now) ----
 
 using UBiDiLevel = uint8_t;
 enum UBiDiDirection { UBIDI_LTR = 0, UBIDI_RTL = 1, UBIDI_MIXED = 2, UBIDI_NEUTRAL = 3 };
@@ -61,15 +61,15 @@ inline void ubidi_close(UBiDi* bidi) {
 
 inline void ubidi_setPara(UBiDi* bidi, const UChar* /*text*/, int32_t length, UBiDiLevel /*paraLevel*/,
 		UBiDiLevel* /*embeddingLevels*/, UErrorCode* pErrorCode) {
-	// TODO (pos-Fase 1): respeitar paraLevel/locale_get_native_rtl uma vez que
-	// exista suporte a bidi no Android -- por enquanto sempre LTR.
+	// TODO (post-Phase 1): honor paraLevel/locale_get_native_rtl once
+	// there is bidi support on Android -- always LTR for now.
 	bidi->text_length = length;
 	*pErrorCode = U_ZERO_ERROR;
 }
 
 inline int32_t ubidi_countRuns(UBiDi* /*bidi*/, UErrorCode* pErrorCode) {
 	*pErrorCode = U_ZERO_ERROR;
-	return 1; // uma unica run, sempre
+	return 1; // a single run, always
 }
 
 inline UBiDiDirection ubidi_getVisualRun(UBiDi* bidi, int32_t /*runIndex*/, int32_t* logicalStart, int32_t* length) {
@@ -78,7 +78,7 @@ inline UBiDiDirection ubidi_getVisualRun(UBiDi* bidi, int32_t /*runIndex*/, int3
 	return UBIDI_LTR;
 }
 
-// ---- ubrk_*: ICU do sistema (API 31+) ou implementacao propria (API 30) ----
+// ---- ubrk_*: system ICU (API 31+) or our own implementation (API 30) ----
 
 namespace alice_icu {
 
@@ -94,7 +94,7 @@ struct system_icu_api {
 	move_fn previous = nullptr;
 };
 
-// nullptr quando o aparelho nao tem libicu.so publica (Android 11)
+// nullptr when the device has no public libicu.so (Android 11)
 inline system_icu_api const* system_icu() {
 	static system_icu_api const* const api = []() -> system_icu_api const* {
 		void* lib = dlopen("libicu.so", RTLD_NOW | RTLD_LOCAL);
@@ -113,12 +113,12 @@ inline system_icu_api const* system_icu() {
 	return api;
 }
 
-// --- implementacao propria (Android 11) -------------------------------------
+// --- custom implementation (Android 11) ------------------------------------
 
 inline bool is_high_surrogate(UChar c) { return c >= 0xD800 && c <= 0xDBFF; }
 inline bool is_low_surrogate(UChar c) { return c >= 0xDC00 && c <= 0xDFFF; }
 
-// code point que comeca em i (ou o que termina logo antes de i, com before=true)
+// code point that starts at i (or the one that ends right before i, with before=true)
 inline uint32_t code_point_at(const UChar* text, int32_t length, int32_t i) {
 	UChar const c = text[i];
 	if(is_high_surrogate(c) && i + 1 < length && is_low_surrogate(text[i + 1]))
@@ -132,7 +132,7 @@ inline uint32_t code_point_before(const UChar* text, int32_t i) {
 	return c;
 }
 
-// marcas que se juntam ao caractere anterior (acentos combinantes, seletores de variacao...)
+// marks that attach to the previous character (combining accents, variation selectors...)
 inline bool is_extend(uint32_t cp) {
 	return (cp >= 0x0300 && cp <= 0x036F) || (cp >= 0x0483 && cp <= 0x0489) || (cp >= 0x0591 && cp <= 0x05BD)
 		|| (cp >= 0x0610 && cp <= 0x061A) || (cp >= 0x064B && cp <= 0x065F) || (cp >= 0x0900 && cp <= 0x0903)
@@ -149,19 +149,19 @@ inline bool is_newline(uint32_t cp) {
 	return cp == '\n' || cp == '\r' || cp == 0x85 || cp == 0x2028 || cp == 0x2029;
 }
 
-// ideogramas/silabarios que nao usam espaco: cada um e uma "palavra"
+// ideographs/syllabaries that do not use spaces: each one is a "word"
 inline bool is_ideographic(uint32_t cp) {
 	return (cp >= 0x2E80 && cp <= 0x2FFF) || (cp >= 0x3040 && cp <= 0x30FF) || (cp >= 0x3100 && cp <= 0x31FF)
 		|| (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0xF900 && cp <= 0xFAFF)
 		|| (cp >= 0x20000 && cp <= 0x3FFFF);
 }
 
-// silabas coreanas: palavras separadas por espaco, mas a linha pode quebrar entre silabas
+// Korean syllables: words separated by spaces, but the line may break between syllables
 inline bool is_hangul(uint32_t cp) {
 	return (cp >= 0xAC00 && cp <= 0xD7AF) || (cp >= 0x1100 && cp <= 0x11FF) || (cp >= 0x3130 && cp <= 0x318F);
 }
 
-// pontuacao ASCII/Latin-1 e as faixas de pontuacao/simbolos gerais
+// ASCII/Latin-1 punctuation and the general punctuation/symbol ranges
 inline bool is_punctuation(uint32_t cp) {
 	if(cp < 0x80)
 		return !((cp >= '0' && cp <= '9') || (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z')) && cp > ' ';
@@ -179,8 +179,8 @@ inline bool is_digit(uint32_t cp) {
 	return (cp >= '0' && cp <= '9') || (cp >= 0x0660 && cp <= 0x0669) || (cp >= 0xFF10 && cp <= 0xFF19);
 }
 
-// pontuacao que nao separa a palavra quando esta entre duas letras ("don't",
-// "e.g") ou entre dois numeros ("1,234.56") -- como MidLetter/MidNum do ICU
+// punctuation that does not split the word when it sits between two letters ("don't",
+// "e.g") or between two numbers ("1,234.56") -- like ICU's MidLetter/MidNum
 inline bool is_mid_letter(uint32_t cp) {
 	return cp == '\'' || cp == 0x2019 || cp == '.' || cp == ':' || cp == 0xB7 || cp == 0x2027;
 }
@@ -188,21 +188,21 @@ inline bool is_mid_number(uint32_t cp) {
 	return cp == '\'' || cp == 0x2019 || cp == '.' || cp == ',' || cp == ';' || cp == 0x066C;
 }
 
-// limite de "caractere visivel" (grapheme cluster simplificado)
+// "visible character" boundary (simplified grapheme cluster)
 inline bool is_character_boundary(const UChar* text, int32_t length, int32_t i) {
 	if(i <= 0 || i >= length)
 		return true;
 	if(is_low_surrogate(text[i]) && is_high_surrogate(text[i - 1]))
-		return false; // meio de um par surrogate
+		return false; // middle of a surrogate pair
 	if(text[i - 1] == '\r' && text[i] == '\n')
 		return false;
 	uint32_t const cp = code_point_at(text, length, i);
 	if(is_extend(cp))
 		return false;
-	return code_point_before(text, i) != 0x200D; // emoji com ZWJ
+	return code_point_before(text, i) != 0x200D; // emoji with ZWJ
 }
 
-// 0: palavra, 1: espaco, 2: quebra de linha, 3: outro (cada um sozinho)
+// 0: word, 1: space, 2: line break, 3: other (each one alone)
 inline int word_class(uint32_t cp) {
 	if(is_word_char(cp))
 		return 0;
@@ -225,21 +225,21 @@ inline bool is_word_boundary(const UChar* text, int32_t length, int32_t i) {
 	if(cb == 0 && ca == 0)
 		return false;
 	if(cb == 1 && ca == 1)
-		return false; // espacos seguidos ficam juntos
+		return false; // consecutive spaces stay together
 	if(before == '\r' && after == '\n')
 		return false;
-	// letra + apostrofo/ponto + letra (ou numero + virgula/ponto + numero) fica junto
+	// letter + apostrophe/period + letter (or number + comma/period + number) stays together
 	auto joins = [](uint32_t left, uint32_t mid, uint32_t right) {
 		bool const letters = word_class(left) == 0 && word_class(right) == 0 && !is_digit(left) && !is_digit(right);
 		bool const numbers = is_digit(left) && is_digit(right);
 		return (letters && is_mid_letter(mid)) || (numbers && is_mid_number(mid));
 	};
-	if(cb == 0) { // antes: palavra; depois: talvez pontuacao do meio
+	if(cb == 0) { // before: word; after: maybe mid punctuation
 		int32_t const j = i + (after > 0xFFFF ? 2 : 1);
 		if(j < length && joins(before, after, code_point_at(text, length, j)))
 			return false;
 	}
-	if(ca == 0) { // depois: palavra; antes: talvez pontuacao do meio
+	if(ca == 0) { // after: word; before: maybe mid punctuation
 		int32_t const j = i - (before > 0xFFFF ? 2 : 1);
 		if(j > 0 && joins(code_point_before(text, j), before, after))
 			return false;
@@ -247,7 +247,7 @@ inline bool is_word_boundary(const UChar* text, int32_t length, int32_t i) {
 	return true;
 }
 
-// oportunidade de quebra de linha antes de i
+// line break opportunity before i
 inline bool is_line_boundary(const UChar* text, int32_t length, int32_t i) {
 	if(i <= 0 || i >= length)
 		return true;
@@ -256,26 +256,26 @@ inline bool is_line_boundary(const UChar* text, int32_t length, int32_t i) {
 	uint32_t const before = code_point_before(text, i);
 	uint32_t const after = code_point_at(text, length, i);
 	if(is_newline(before))
-		return !(before == '\r' && after == '\n'); // quebra obrigatoria
+		return !(before == '\r' && after == '\n'); // mandatory break
 	if(is_space(after) || is_newline(after))
-		return false; // nunca antes de espaco (os espacos ficam no fim da linha)
+		return false; // never before a space (spaces stay at the end of the line)
 	if(before == 0xA0 || after == 0xA0 || before == 0x202F || after == 0x202F)
-		return false; // espaco nao separavel
-	// nunca antes de pontuacao de fechamento/infixa, nem depois de espacos
-	// (classes CL, CP, EX, IS e SY do algoritmo de quebra de linha do Unicode)
+		return false; // non-breaking space
+	// never before closing/infix punctuation, nor after spaces
+	// (classes CL, CP, EX, IS and SY of the Unicode line breaking algorithm)
 	bool const no_break_before = after == ')' || after == ']' || after == '}' || after == '!' || after == '?'
 		|| after == ',' || after == '.' || after == ':' || after == ';' || after == '/' || after == 0x00BB
 		|| after == 0x3001 || after == 0x3002 || after == 0xFF0C || after == 0xFF0E || after == 0x300D || after == 0x300F;
 	if(no_break_before)
 		return false;
 	if(is_space(before))
-		return true; // depois de um ou mais espacos
+		return true; // after one or more spaces
 	if(before == '/')
-		return !is_digit(after); // "entrada/|saida", mas "1/2" fica junto
+		return !is_digit(after); // "input/|output", but "1/2" stays together
 	if(before == '-' || before == 0x2010 || before == 0x2013 || before == 0x2014)
 		return is_word_char(after) && i >= 2 && is_word_char(code_point_before(text, i - (before > 0xFFFF ? 2 : 1)));
 	if(is_ideographic(before) || is_ideographic(after) || is_hangul(before) || is_hangul(after)) {
-		// nao quebrar antes de pontuacao de fechamento nem depois da de abertura
+		// do not break before closing punctuation nor after opening punctuation
 		bool const closing = after == 0x3001 || after == 0x3002 || after == 0xFF0C || after == 0xFF0E || after == 0x300D || after == 0x300F || after == ')' || after == ',' || after == '.' || after == '!' || after == '?';
 		bool const opening = before == 0x300C || before == 0x300E || before == '(';
 		return !closing && !opening;
@@ -284,7 +284,7 @@ inline bool is_line_boundary(const UChar* text, int32_t length, int32_t i) {
 }
 
 struct break_iterator {
-	UBreakIterator* system = nullptr; // ICU do sistema, quando existe
+	UBreakIterator* system = nullptr; // system ICU, when it exists
 	UBreakIteratorType type = UBRK_CHARACTER;
 	const UChar* text = nullptr;
 	int32_t length = 0;
@@ -365,14 +365,14 @@ inline int32_t previous(UBreakIterator* bi) {
 
 } // namespace alice_icu
 
-// redireciona as chamadas do jogo (as declaracoes do NDK so existem na API 31+)
+// redirects the game's calls (the NDK declarations only exist on API 31+)
 #define ubrk_open alice_icu::open
 #define ubrk_close alice_icu::close
 #define ubrk_first alice_icu::first
 #define ubrk_next alice_icu::next
 #define ubrk_previous alice_icu::previous
 
-// ---- ubrk_openBinaryRules: decodifica [tipo][locale] e abre o iterador ----
+// ---- ubrk_openBinaryRules: decodes [type][locale] and opens the iterator ----
 
 inline UBreakIterator* ubrk_openBinaryRules(const uint8_t* binaryRules, int32_t rulesLength,
 		const UChar* text, int32_t textLength, UErrorCode* status) {
@@ -381,8 +381,8 @@ inline UBreakIterator* ubrk_openBinaryRules(const uint8_t* binaryRules, int32_t 
 		return nullptr;
 	}
 	auto type = UBreakIteratorType(binaryRules[0]);
-	// bytes seguintes = locale em UTF-8/ASCII (sempre é, ver fonts.cpp) -- precisa
-	// de um char* terminado em zero, entao copia pra um buffer local
+	// following bytes = locale in UTF-8/ASCII (always is, see fonts.cpp) -- needs
+	// a zero-terminated char*, so it copies to a local buffer
 	char locale_buf[64] = {};
 	int32_t locale_len = rulesLength - 1;
 	if(locale_len >= int32_t(sizeof(locale_buf)))

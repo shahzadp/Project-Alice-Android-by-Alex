@@ -1,28 +1,28 @@
 // entry_point_android.cpp
 //
-// Equivalente Android do entry_point_nix.cpp. No lugar de main(), a
-// AliceActivity (NativeActivity, via android_native_app_glue) chama
-// android_main numa thread propria; o ciclo de vida (janela, pausa, foco) e o
-// loop de render ficam em window::run_android_main_loop (window_android.cpp),
-// que chama window::android_launcher_update a cada volta.
+// Android equivalent of entry_point_nix.cpp. Instead of main(), the
+// AliceActivity (NativeActivity, via android_native_app_glue) calls
+// android_main on its own thread; the lifecycle (window, pause, focus) and the
+// render loop stay in window::run_android_main_loop (window_android.cpp),
+// which calls window::android_launcher_update on every turn.
 //
-// Ate o jogo comecar, o launcher (abaixo) faz numa thread separada -- para o
-// Android nao achar que o app travou -- o que o entry_point_nix.cpp faz antes de
-// abrir a janela:
-//   1. extrai os arquivos do Alice (pasta assets/ do repositorio, dentro do APK)
-//      para o armazenamento interno, se ainda nao extraiu esta versao;
-//   2. acha a pasta do Victoria 2 (salva de uma execucao anterior, ou pede ao
-//      usuario pelo seletor de pastas da AliceActivity);
-//   3. acha um cenario ja montado para essa pasta ou monta um novo (minutos);
-//   4. carrega o cenario e as configuracoes.
-// Depois, na thread principal e com uma superficie EGL, inicia as threads do
-// jogo e window::android_start_game (OpenGL, som, on_create).
+// Until the game starts, the launcher (below) does on a separate thread -- so
+// Android does not think the app froze -- what entry_point_nix.cpp does before
+// opening the window:
+//   1. extracts the Alice files (assets/ folder of the repository, inside the APK)
+//      into internal storage, if this version has not been extracted yet;
+//   2. finds the Victoria 2 folder (saved from a previous run, or asks the
+//      user through the AliceActivity folder picker);
+//   3. finds an already assembled scenario for that folder or assembles a new one (minutes);
+//   4. loads the scenario and the settings.
+// Afterwards, on the main thread and with an EGL surface, it starts the game
+// threads and window::android_start_game (OpenGL, sound, on_create).
 //
-// Raizes do sistema de arquivos do jogo: [pasta do Victoria 2, pasta interna
-// com assets/]. No desktop a pasta assets/ fica dentro da pasta do jogo; aqui
-// ela fica no armazenamento do app, sem precisar escrever na pasta do usuario.
+// Roots of the game file system: [Victoria 2 folder, internal folder
+// with assets/]. On desktop the assets/ folder sits inside the game folder; here
+// it lives in the app storage, with no need to write to the user's folder.
 //
-// Ainda nao ha selecao de mods (so o jogo base).
+// There is no mod selection yet (base game only).
 
 #include <android_native_app_glue.h>
 #include <android/asset_manager.h>
@@ -58,7 +58,7 @@ namespace alice_android {
 #define LAUNCHER_LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Alice", __VA_ARGS__)
 
 android_app* g_app = nullptr;
-std::string alice_data_root; // contem assets/ (extraido do APK)
+std::string alice_data_root; // contains assets/ (extracted from the APK)
 
 enum class load_status : uint8_t { idle, working, need_folder, ready, failed };
 std::atomic<load_status> status{ load_status::idle };
@@ -66,13 +66,13 @@ std::thread loader_thread;
 bool folder_dialog_open = false;
 bool game_threads_started = false;
 
-std::mutex shared_mutex; // protege os dois campos abaixo
-std::optional<std::string> picked_folder; // vindo do seletor (thread da interface Java)
-std::string need_folder_reason;           // por que a pasta atual nao serve
+std::mutex shared_mutex; // protects the two fields below
+std::optional<std::string> picked_folder; // coming from the picker (Java UI thread)
+std::string need_folder_reason;           // why the current folder does not work
 
 // --- Java (AliceActivity) ------------------------------------------------------
 
-// chama um metodo void(String) da AliceActivity, de qualquer thread nativa
+// calls a void(String) method of AliceActivity, from any native thread
 void call_activity(char const* method, std::string const& argument) {
 	if(!g_app)
 		return;
@@ -101,9 +101,9 @@ void call_activity(char const* method, std::string const& argument) {
 		vm->DetachCurrentThread();
 }
 
-// Etapa da abertura na janela de carregamento, que fica aberta ate o jogo
-// aparecer (um aviso comum some em segundos e a montagem do cenario leva
-// minutos). Vazio fecha.
+// Step of the startup shown in the loading window, which stays open until the
+// game appears (a common notification disappears in seconds and assembling the
+// scenario takes minutes). Empty closes it.
 void show_progress(std::string const& message) {
 	if(!message.empty())
 		LAUNCHER_LOGI("%s", message.c_str());
@@ -115,7 +115,7 @@ void wake_main_loop() {
 		ALooper_wake(g_app->looper);
 }
 
-// --- arquivos -----------------------------------------------------------------
+// --- files --------------------------------------------------------------------
 
 bool make_directories(std::string const& path) {
 	for(size_t pos = 1; pos <= path.size(); ++pos) {
@@ -158,22 +158,22 @@ std::optional<std::string> read_apk_asset(char const* name) {
 	return content;
 }
 
-// Extrai os arquivos listados em alice_assets_manifest.txt (gerado pelo Gradle,
-// ver android/app/build.gradle.kts). Repete so quando a lista muda.
+// Extracts the files listed in alice_assets_manifest.txt (generated by Gradle,
+// see android/app/build.gradle.kts). It only repeats when the list changes.
 bool extract_alice_assets() {
 	auto manifest = read_apk_asset("alice_assets_manifest.txt");
 	if(!manifest) {
-		LAUNCHER_LOGE("alice_assets_manifest.txt nao esta no APK");
+		LAUNCHER_LOGE("alice_assets_manifest.txt is not in the APK");
 		return false;
 	}
 	std::string const extracted_manifest_path = alice_data_root + "/alice_assets_manifest.txt";
 	if(auto existing = read_text_file(extracted_manifest_path); existing && *existing == *manifest) {
-		LAUNCHER_LOGI("arquivos do Alice ja extraidos");
+		LAUNCHER_LOGI("Alice files already extracted");
 		return true;
 	}
 
-	show_progress("Preparando os arquivos do Project Alice...");
-	// a lista antiga sai primeiro: se a extracao for interrompida, recomeca na proxima vez
+	show_progress("Preparing the Project Alice files...");
+	// the old list goes away first: if the extraction is interrupted, it restarts next time
 	unlink(extracted_manifest_path.c_str());
 
 	size_t count = 0;
@@ -193,13 +193,13 @@ bool extract_alice_assets() {
 		make_directories(destination.substr(0, destination.rfind('/')));
 		AAsset* asset = AAssetManager_open(g_app->activity->assetManager, relative.c_str(), AASSET_MODE_STREAMING);
 		if(!asset) {
-			LAUNCHER_LOGE("arquivo faltando no APK: %s", relative.c_str());
+			LAUNCHER_LOGE("file missing from the APK: %s", relative.c_str());
 			return false;
 		}
 		FILE* out = std::fopen(destination.c_str(), "wb");
 		if(!out) {
 			AAsset_close(asset);
-			LAUNCHER_LOGE("nao foi possivel criar %s", destination.c_str());
+			LAUNCHER_LOGE("could not create %s", destination.c_str());
 			return false;
 		}
 		int read = 0;
@@ -213,12 +213,12 @@ bool extract_alice_assets() {
 		ok = (std::fclose(out) == 0) && ok && read >= 0;
 		AAsset_close(asset);
 		if(!ok) {
-			LAUNCHER_LOGE("erro ao gravar %s (sem espaco?)", destination.c_str());
+			LAUNCHER_LOGE("error writing %s (out of space?)", destination.c_str());
 			return false;
 		}
 		++count;
 	}
-	LAUNCHER_LOGI("%zu arquivos do Alice extraidos para %s", count, alice_data_root.c_str());
+	LAUNCHER_LOGI("%zu Alice files extracted to %s", count, alice_data_root.c_str());
 	return write_text_file(extracted_manifest_path, *manifest);
 }
 
@@ -244,18 +244,18 @@ bool has_subdirectory_caseless(std::string const& base, char const* name) {
 	return found;
 }
 
-// "" se a pasta serve; senao, o motivo (mostrado ao usuario)
+// "" if the folder works; otherwise, the reason (shown to the user)
 std::string check_game_folder(std::string const& path) {
 	DIR* d = opendir(path.c_str());
 	if(!d)
-		return "Nao foi possivel abrir a pasta " + path + " (falta a permissao de acesso a arquivos?).";
+		return "Could not open the folder " + path + " (missing file access permission?).";
 	closedir(d);
 	if(!has_subdirectory_caseless(path, "common") || !has_subdirectory_caseless(path, "map") || !has_subdirectory_caseless(path, "gfx"))
-		return "A pasta " + path + " nao parece ser a do Victoria 2 (faltam as pastas common, map ou gfx).";
+		return "The folder " + path + " does not look like the Victoria 2 one (missing the common, map or gfx folders).";
 	return "";
 }
 
-// --- cenario (mesma logica do entry_point_nix.cpp, so que sem mods) -----------
+// --- scenario (same logic as entry_point_nix.cpp, only without mods) -----------
 
 struct scenario_file {
 	native_string file_name;
@@ -317,7 +317,7 @@ native_string to_hex(uint64_t v) {
 	return ret;
 }
 
-// igual ao build_scenario_file do entry_point_nix.cpp
+// same as build_scenario_file from entry_point_nix.cpp
 bool build_scenario_file() {
 	auto const path = produce_mod_path();
 	simple_fs::file_system fs_root;
@@ -335,7 +335,7 @@ bool build_scenario_file() {
 		err.accumulated_errors += "File common/bookmarks.txt could not be opened\n";
 	}
 	if(bookmark_context.bookmark_dates.empty()) {
-		LAUNCHER_LOGE("common/bookmarks.txt sem datas: %s", err.accumulated_errors.c_str());
+		LAUNCHER_LOGE("common/bookmarks.txt without dates: %s", err.accumulated_errors.c_str());
 		return false;
 	}
 
@@ -369,12 +369,12 @@ bool build_scenario_file() {
 		auto const assembled_msg = std::string("The following problems were encountered while creating the scenario:\r\n\r\nErrors:\r\n") + err.accumulated_errors + "\r\n\r\nWarnings:\r\n" + err.accumulated_warnings;
 		auto pdir = simple_fs::get_or_create_scenario_directory();
 		simple_fs::write_file(pdir, NATIVE("scenario_errors.log"), assembled_msg.data(), uint32_t(assembled_msg.length()));
-		LAUNCHER_LOGE("problemas ao montar o cenario; ver %s/scenario_errors.log", simple_fs::get_full_name(pdir).c_str());
+		LAUNCHER_LOGE("problems assembling the scenario; see %s/scenario_errors.log", simple_fs::get_full_name(pdir).c_str());
 	}
 	return !err.fatal && !selected_scenario_file.empty();
 }
 
-// --- thread de carregamento -------------------------------------------------------
+// --- loading thread ----------------------------------------------------------------
 
 void fail(std::string const& message) {
 	LAUNCHER_LOGE("%s", message.c_str());
@@ -385,7 +385,7 @@ void fail(std::string const& message) {
 }
 
 void need_folder(std::string const& reason) {
-	show_progress(""); // o seletor de pasta precisa dos toques
+	show_progress(""); // the folder picker needs the touches
 	{
 		std::lock_guard lock(shared_mutex);
 		need_folder_reason = reason;
@@ -395,13 +395,13 @@ void need_folder(std::string const& reason) {
 }
 
 void run_loader() {
-	show_progress("Abrindo o Project Alice...");
+	show_progress("Opening Project Alice...");
 	if(!extract_alice_assets()) {
-		fail("Nao foi possivel preparar os arquivos do Project Alice (sem espaco livre?).");
+		fail("Could not prepare the Project Alice files (out of free space?).");
 		return;
 	}
 
-	// pasta do jogo: a recem-escolhida ou a salva de uma execucao anterior
+	// game folder: the newly picked one or the one saved from a previous run
 	std::string folder;
 	bool newly_picked = false;
 	{
@@ -429,37 +429,37 @@ void run_loader() {
 	if(newly_picked)
 		write_text_file(game_folder_config_path(), folder);
 	game_folder = folder;
-	LAUNCHER_LOGI("pasta do Victoria 2: %s", game_folder.c_str());
+	LAUNCHER_LOGI("Victoria 2 folder: %s", game_folder.c_str());
 
 	add_roots(game_state.common_fs);
 	check_scenario_folder();
 	find_scenario_file();
 	if(selected_scenario_file.empty()) {
-		show_progress("Montando o cenário do Victoria 2.\nIsso só acontece na primeira vez e pode levar vários minutos.");
+		show_progress("Assembling the Victoria 2 scenario.\nThis only happens the first time and can take several minutes.");
 		if(!build_scenario_file()) {
-			fail("Nao foi possivel montar o cenario. Veja scenario_errors.log na pasta do app.");
+			fail("Could not assemble the scenario. See scenario_errors.log in the app folder.");
 			return;
 		}
 	}
 
-	show_progress("Carregando o cenário...");
+	show_progress("Loading the scenario...");
 	if(!sys::try_read_scenario_and_save_file(game_state, selected_scenario_file)) {
-		fail("O arquivo de cenario nao pode ser lido.");
+		fail("The scenario file cannot be read.");
 		return;
 	}
-	LAUNCHER_LOGI("cenario carregado: %s", selected_scenario_file.c_str());
+	LAUNCHER_LOGI("scenario loaded: %s", selected_scenario_file.c_str());
 	game_state.loaded_scenario_file = selected_scenario_file;
 	game_state.fill_unsaved_data();
 
 	network::init(game_state);
-	// sem configuracoes salvas (primeira execucao) a escala da interface e o
-	// antialiasing sao escolhidos para o aparelho em window::android_start_game
+	// with no saved settings (first run) the interface scale and the
+	// antialiasing are chosen for the device in window::android_start_game
 	bool const has_saved_settings = bool(simple_fs::peek_file(simple_fs::get_or_create_settings_directory(), NATIVE("user_settings.dat")));
 	game_state.load_user_settings();
 	game_state.win_ptr->first_run_defaults = !has_saved_settings;
 	ui::populate_definitions_map(game_state);
 
-	show_progress("Iniciando o jogo...");
+	show_progress("Starting the game...");
 	status.store(load_status::ready);
 	wake_main_loop();
 }
@@ -471,7 +471,7 @@ void start_loader() {
 	loader_thread = std::thread(run_loader);
 }
 
-// as mesmas threads que o entry_point_nix.cpp inicia antes de abrir a janela
+// the same threads that entry_point_nix.cpp starts before opening the window
 void start_game_threads(sys::state& state) {
 	std::thread([&state]() { state.game_loop(); }).detach();
 	std::thread([&state]() { state.ui_cached_data.process_update(state); }).detach();
@@ -521,14 +521,14 @@ void android_launcher_update(sys::state& state) {
 		break;
 	}
 	case load_status::ready:
-		// o jogo precisa do contexto EGL com uma superficie; sem ela espera
+		// the game needs the EGL context with a surface; without it, it waits
 		if(!win.game_started && win.egl_surface != EGL_NO_SURFACE) {
 			if(loader_thread.joinable())
 				loader_thread.join();
 			if(!game_threads_started)
 				start_game_threads(state);
 			android_start_game(state);
-			show_progress(""); // a janela de carregamento da abertura fecha com o jogo na tela
+			show_progress(""); // the startup loading window closes once the game is on screen
 		}
 		break;
 	case load_status::working:
@@ -540,7 +540,7 @@ void android_launcher_update(sys::state& state) {
 
 } // namespace window
 
-// chamado pela AliceActivity (thread da interface) com a pasta escolhida
+// called by AliceActivity (UI thread) with the chosen folder
 extern "C" JNIEXPORT void JNICALL Java_org_projectalice_mobile_AliceActivity_nativeOnGameFolderPicked(JNIEnv* env, jclass, jstring path) {
 	char const* chars = env->GetStringUTFChars(path, nullptr);
 	{
@@ -552,27 +552,27 @@ extern "C" JNIEXPORT void JNICALL Java_org_projectalice_mobile_AliceActivity_nat
 }
 
 void android_main(struct android_app* app) {
-	__android_log_print(ANDROID_LOG_INFO, "Alice", "android_main iniciado");
+	__android_log_print(ANDROID_LOG_INFO, "Alice", "android_main started");
 	alice_android::g_app = app;
 
-	// simple_fs_nix.cpp guarda configuracoes, cenarios e saves em
-	// $HOME/.local/share/Alice; no Android $HOME nao existe. A pasta externa
-	// do app (Android/data/org.projectalice.mobile/files) da para acessar pelo
-	// cabo USB, para copiar saves.
+	// simple_fs_nix.cpp stores settings, scenarios and saves in
+	// $HOME/.local/share/Alice; on Android $HOME does not exist. The app's external
+	// folder (Android/data/org.projectalice.mobile/files) can be reached over a
+	// USB cable, to copy saves.
 	char const* home = app->activity->externalDataPath ? app->activity->externalDataPath : app->activity->internalDataPath;
 	alice_android::make_directories(home);
 	setenv("HOME", home, 1);
 	alice_android::alice_data_root = std::string(app->activity->internalDataPath) + "/alice";
 	alice_android::make_directories(alice_android::alice_data_root);
-	__android_log_print(ANDROID_LOG_INFO, "Alice", "HOME=%s, arquivos do Alice em %s", home, alice_android::alice_data_root.c_str());
+	__android_log_print(ANDROID_LOG_INFO, "Alice", "HOME=%s, Alice files in %s", home, alice_android::alice_data_root.c_str());
 
 	window::run_android_main_loop(game_state, app);
 
-	// O app foi fechado de verdade (configChanges evita recriar a Activity em
-	// rotacao etc.). As threads do jogo nao tem como ser encerradas com seguranca
-	// a partir daqui e o estado estatico nao pode ser reaproveitado por uma nova
-	// Activity no mesmo processo, entao o processo termina.
+	// The app was really closed (configChanges avoids recreating the Activity on
+	// rotation etc.). The game threads cannot be safely shut down
+	// from here and the static state cannot be reused by a new
+	// Activity in the same process, so the process ends.
 	game_state.quit_signaled.store(true, std::memory_order_release);
-	__android_log_print(ANDROID_LOG_INFO, "Alice", "encerrando o processo");
+	__android_log_print(ANDROID_LOG_INFO, "Alice", "shutting down the process");
 	_exit(0);
 }

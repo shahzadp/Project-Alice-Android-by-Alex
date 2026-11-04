@@ -3,42 +3,30 @@
 	viewBox = "0 0 [[W;1000;0]] [[H;1000;0]] " 
 	width = "[[W;1000;0]]" 
 	height = "[[H;1000;0]]" >  
-	
+
+	<!-- Victoria II style window frame: near-black bevelled frame around a
+	     parchment body with the double gold/brown rule Vic2 windows use.
+
+	     asvg units: the axis tokens resolve to 500 * size / base, so 1 unit is
+	     500 / grid_size pixels (62.5 on the 8 px grid every window uses).
+	     Offsets therefore have to be written in those units: -62.5 = 1 px. -->
+
 	<defs>
-		<pattern id="printpattern" x="0" y="0" width="[[P;64;0]]" height="[[P;64;0]]" patternUnits="userSpaceOnUse" >
-			<image href="printbrush.png" height="[[P;64;0]]" width="[[P;64;0]]" />
-		</pattern>
-		<mask  id="printmask">
-			<rect  x="0" y="0" fill="url(#printpattern)" width="[[W;1000;0]]" height="[[H;1000;0]]" />
-		</mask>
+		<linearGradient id="frameedge" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#6b573c" />
+			<stop offset="0.5" stop-color="#4a3a28" />
+			<stop offset="1" stop-color="#33271b" />
+		</linearGradient>
+		<linearGradient id="bodyfill" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#e3ddcf" />
+			<stop offset="0.55" stop-color="#d5cebf" />
+			<stop offset="1" stop-color="#c3bcaa" />
+		</linearGradient>
 	</defs>
-		<rect fill="#fef7f0" x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" />
-	<g mask="url(#printmask)">
-		<path
-			style = "fill:#000000;fill-opacity:0;stroke:#32291f;stroke-width:132;stroke-dasharray:none;stroke-opacity:1"
-			width = "[[W;1000;0]]"
-			height = "[[H;1000;0]]"
-			x = "0"
-			y = "0"
-			d = "M 200, 200
-			h [[W;1000;-400]]
-			v [[H;1000;-400]]
-			h [[W;-1000;400]]
-			v [[H;-1000;400]]
-			z"
-		/>
-		<path
-			style = "fill:#000000;fill-opacity:0;stroke:#32291f;stroke-width:34;stroke-dasharray:none;stroke-opacity:1"
-			width = "[[W;1000;0]]"
-			height = "[[H;1000;0]]"
-			x = "0"
-			y = "0"
-			d = "M 417, 417
-			h [[W;1000;-834]]
-			v [[H;1000;-834]]
-			h [[W;-1000;834]]
-			v [[H;-1000;834]]
-			z"
-		/>
-	</g>
+
+	<rect x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" fill="#241c15" />
+	<rect x="[[P;1;0]]" y="[[P;1;0]]" width="[[W;1000;-125]]" height="[[H;1000;-125]]" fill="url(#frameedge)" />
+	<rect x="[[P;4;0]]" y="[[P;4;0]]" width="[[W;1000;-500]]" height="[[H;1000;-500]]" fill="url(#bodyfill)" />
+	<rect x="[[P;4;0]]" y="[[P;4;0]]" width="[[W;1000;-500]]" height="[[H;1000;-500]]" fill="none" stroke="#b09a68" stroke-width="[[P;1;0]]" />
+	<rect x="[[P;6;0]]" y="[[P;6;0]]" width="[[W;1000;-750]]" height="[[H;1000;-750]]" fill="none" stroke="#7d6a4a" stroke-width="[[P;1;0]]" stroke-opacity="0.55" />
 </svg>

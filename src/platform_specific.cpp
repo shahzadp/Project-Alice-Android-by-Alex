@@ -22,9 +22,10 @@
 
 #elif defined(__ANDROID__)
 // ANDROID implementations go here
-// simple_fs_nix.cpp e reaproveitado (so usa POSIX puro: dirent/fcntl/mmap/stat/unistd,
-// tudo disponivel na libc do NDK); o Storage Access Framework para acessar os arquivos
-// do Victoria 2 copiados pelo usuario fica pra Fase 5, nao bloqueia a compilacao.
+// simple_fs_nix.cpp is reused (it only uses pure POSIX: dirent/fcntl/mmap/stat/
+// unistd, all available in the NDK libc); the Storage Access Framework for reading
+// the Victoria 2 files the user copied over is left for phase 5 and does not block
+// the build.
 #include "simple_fs_nix.cpp"
 #include "window_android.cpp"
 #include "sound_android.cpp"

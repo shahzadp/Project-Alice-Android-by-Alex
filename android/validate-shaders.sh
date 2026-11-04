@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Valida todos os shaders do jogo como GLSL ES 3.20 (Android) e como GLSL 4.60
-# (desktop), montados como o jogo monta: prefixo _geometry.glsl + shader.
-# No ES o prefixo tem o #version/#extension trocado pelo mesmo cabecalho que
-# ogl::set_shader_prefix usa no Android (opengl_wrapper.cpp) -- manter os dois iguais.
+# Validates every game shader as GLSL ES 3.20 (Android) and as GLSL 4.60
+# (desktop), assembled the way the game assembles them: _geometry.glsl prefix + shader.
+# On ES the prefix has its #version/#extension replaced by the same header that
+# ogl::set_shader_prefix uses on Android (opengl_wrapper.cpp) -- keep the two the same.
 #
-# Uso: android/validate-shaders.sh   (precisa do glslangValidator: apt install glslang-tools)
+# Usage: android/validate-shaders.sh   (needs glslangValidator: apt install glslang-tools)
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,13 +35,13 @@ for mode in es desktop; do
 		printf '%s\n%s\n' "$prefix" "$(cat "$f")" > "$OUT/$mode/$name.$stage"
 		if ! result=$(glslangValidator "$OUT/$mode/$name.$stage" 2>&1); then
 			failures=$((failures + 1))
-			echo "FALHOU ($mode) $name.$stage"
+			echo "FAILED ($mode) $name.$stage"
 			echo "$result" | grep ERROR | head -5
 		fi
 	done
 done
 
-# pares vertice+fragmento que o jogo liga (map.cpp e opengl_wrapper.cpp)
+# vertex+fragment pairs that the game links (map.cpp and opengl_wrapper.cpp)
 for pair in "map_v map_f" "map_v map_provinces_f" "textured_line_v textured_line_f" \
 	"textured_line_variable_width_v textured_line_river_f" "trade_route_v trade_route_f" \
 	"textured_line_v wavy_textured_line_f" "textured_line_b_v textured_line_b_f" \
@@ -52,14 +52,14 @@ for pair in "map_v map_f" "map_v map_provinces_f" "textured_line_v textured_line
 	set -- $pair
 	if ! result=$(glslangValidator -l "$OUT/es/$1.vert" "$OUT/es/$2.frag" 2>&1); then
 		failures=$((failures + 1))
-		echo "FALHOU (ligacao es) $1 + $2"
+		echo "FAILED (es linking) $1 + $2"
 		echo "$result" | grep ERROR | head -5
 	fi
 done
 
 if [ "$failures" -eq 0 ]; then
-	echo "Todos os shaders validos como GLSL ES 3.20 e GLSL 4.60."
+	echo "All shaders valid as GLSL ES 3.20 and GLSL 4.60."
 else
-	echo "$failures falha(s)."
+	echo "$failures failure(s)."
 	exit 1
 fi

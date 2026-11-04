@@ -1,50 +1,50 @@
-Versão de testes do **Project Alice para Android**: o motor de código aberto para jogar Victoria 2, rodando nativamente no celular.
+Test version of **Project Alice for Android**: the open-source engine for playing Victoria 2, running natively on the phone.
 
-> ⚠️ **Versão de testes.** Já roda num aparelho real (Moto One Hyper, Android 11, Adreno 612), mas espere problemas. Relatos são bem-vindos.
+> ⚠️ **Test version.** It already runs on a real device (Moto One Hyper, Android 11, Adreno 612), but expect problems. Reports are welcome.
 
-## Requisitos
+## Requirements
 
-- Android 11 ou mais novo, celular ou tablet **ARM 64 bits**
-- GPU com OpenGL ES 3.2
-- Os arquivos do **Victoria 2 com as expansões**, copiados para o aparelho. O conteúdo do jogo original não está incluído.
+- Android 11 or newer, **64-bit ARM** phone or tablet
+- GPU with OpenGL ES 3.2
+- The **Victoria 2 files with the expansions**, copied to the device. The original game content is not included.
 
-## Como instalar
+## How to install
 
-1. Baixe o arquivo `.apk` abaixo, em **Assets**.
-2. Copie a pasta do Victoria 2 para o aparelho, por exemplo para `Jogos/Victoria 2`. A pasta certa é a que contém `common`, `map` e `gfx`. Evite a pasta `Download` e a raiz do armazenamento, que o seletor do Android não deixa escolher.
-3. Instale o APK. É preciso permitir a instalação de fontes desconhecidas.
-4. Abra o app, toque em **Escolher pasta**, ative **Acesso a todos os arquivos**, volte ao app e escolha a pasta do jogo.
-5. Na primeira vez o app monta o cenário, o que pode levar vários minutos.
+1. Download the `.apk` file below, under **Assets**.
+2. Copy the Victoria 2 folder to the device, for example to `Jogos/Victoria 2`. The right folder is the one containing `common`, `map` and `gfx`. Avoid the `Download` folder and the root of the storage, which the Android picker does not let you choose.
+3. Install the APK. You need to allow installation from unknown sources.
+4. Open the app, tap **Choose folder**, turn on **All files access**, go back to the app and choose the game folder.
+5. The first time, the app builds the scenario, which can take several minutes.
 
-**Já tem uma versão anterior instalada?** Esta versão não instala por cima dela: desinstale a anterior antes. Desinstalar apaga os saves e as configurações; para guardar os saves, copie antes a pasta `Android/data/org.projectalice.mobile/files/.local/share/Alice/` pelo cabo USB e devolva-a depois de abrir a v0.6 uma vez.
+**Already have a previous version installed?** This version does not install over it: uninstall the previous one first. Uninstalling deletes saves and settings; to keep the saves, first copy the `Android/data/org.projectalice.mobile/files/.local/share/Alice/` folder over the USB cable and put it back after opening v0.6 once.
 
-## Controles
+## Controls
 
-| Gesto | Equivale a |
+| Gesture | Equivalent to |
 |---|---|
-| Toque rápido | Clique esquerdo |
-| Segurar parado por ~0,5 s | Clique direito |
-| Arrastar sobre a interface | Arrastar com o botão esquerdo |
-| Arrastar sobre o mapa | Mover o mapa |
-| Pinça com dois dedos | Zoom |
-| Toque com três dedos | Mostra ou esconde o contador de desempenho (FPS) |
-| Voltar | ESC (menu) |
+| Quick tap | Left click |
+| Press and hold still for ~0.5 s | Right click |
+| Drag over the interface | Drag with the left button |
+| Drag over the map | Move the map |
+| Two-finger pinch | Zoom |
+| Three-finger tap | Shows or hides the performance counter (FPS) |
+| Back | ESC (menu) |
 
-Mouse e teclado físicos também funcionam.
+Physical mouse and keyboard also work.
 
-## Novidades desta versão
+## What's new in this version
 
-- **Janela "Carregando" durante toda a abertura:** na primeira vez, montar o cenário leva vários minutos. Antes, o aviso sumia em segundos e a tela ficava azul e vazia, parecendo travada. Agora a janela fica aberta até o jogo aparecer e mostra a etapa atual (preparar os arquivos, montar o cenário, carregar, iniciar).
-- A janela de carregamento não traz mais a barra de navegação do Android de volta por cima do jogo.
-- Continua com tudo da v0.5: resposta mais rápida ao toque com o jogo rodando e contador de desempenho (toque com três dedos).
+- **"Loading" window during the whole startup:** the first time, building the scenario takes several minutes. Before, the message went away within seconds and the screen stayed blue and empty, looking frozen. Now the window stays open until the game appears and shows the current step (preparing the files, building the scenario, loading, starting).
+- The loading window no longer brings Android's navigation bar back on top of the game.
+- It keeps everything from v0.5: faster response to touch with the game running and the performance counter (three-finger tap).
 
-## Limitações conhecidas
+## Known limitations
 
-- Sem seleção de mods; só o jogo base.
-- Não é possível digitar texto (nome de save, chat).
-- Seleção em caixa de várias unidades com o dedo ainda não existe.
-- Entrar na partida leva alguns segundos num celular intermediário.
+- No mod selection; base game only.
+- It is not possible to type text (save name, chat).
+- Box selection of several units with a finger does not exist yet.
+- Entering a game takes a few seconds on a mid-range phone.
 
-## Problemas?
+## Problems?
 
-Abra uma issue com a descrição. Se puder, anexe a saída de `adb logcat -s Alice`.
+Open an issue with the description. If you can, attach the output of `adb logcat -s Alice`.

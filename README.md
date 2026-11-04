@@ -1,47 +1,47 @@
 # Project Alice mobile
 
-Versão para Android do [Project Alice](https://github.com/schombert/Project-Alice), um motor de código aberto para jogar **Victoria 2**. O código C++ do jogo roda nativamente no celular (ARM64, OpenGL ES 3.2), com controles por toque.
+Android version of [Project Alice](https://github.com/schombert/Project-Alice), an open-source engine for playing **Victoria 2**. The game's C++ code runs natively on the phone (ARM64, OpenGL ES 3.2), with touch controls.
 
 ## ⬇️ Download
 
-**[Baixar a última versão (APK)](https://github.com/Vitorio-Kuroski/Project-Alice-mobile/releases/latest/download/ProjectAlice-Android-arm64.apk)**
+**[Download the latest version (APK)](https://github.com/Vitorio-Kuroski/Project-Alice-mobile/releases/latest/download/ProjectAlice-Android-arm64.apk)**
 
-[Novidades e versões anteriores](https://github.com/Vitorio-Kuroski/Project-Alice-mobile/releases)
+[What's new and previous versions](https://github.com/Vitorio-Kuroski/Project-Alice-mobile/releases)
 
-> **Versão de testes.** Já roda num aparelho real (Moto One Hyper, Android 11, Adreno 612), mas espere problemas.
+> **Test version.** It already runs on a real device (Moto One Hyper, Android 11, Adreno 612), but expect problems.
 
-## Requisitos
+## Requirements
 
-- Android 11 ou mais novo, celular ou tablet **ARM 64 bits**
-- GPU com OpenGL ES 3.2
-- Os arquivos do **Victoria 2 com as expansões**, copiados para o aparelho. O conteúdo do jogo original não está incluído.
+- Android 11 or newer, **64-bit ARM** phone or tablet
+- GPU with OpenGL ES 3.2
+- The **Victoria 2 files with the expansions**, copied to the device. The original game content is not included.
 
-## Como instalar
+## How to install
 
-1. Baixe o APK pelo link acima.
-2. Copie a pasta do Victoria 2 para o aparelho, por exemplo para `Jogos/Victoria 2`. A pasta certa é a que contém `common`, `map` e `gfx`. Evite a pasta `Download` e a raiz do armazenamento, que o seletor do Android não deixa escolher.
-3. Instale o APK. É preciso permitir a instalação de fontes desconhecidas.
-4. Abra o app, toque em **Escolher pasta**, ative **Acesso a todos os arquivos**, volte ao app e escolha a pasta do jogo.
-5. Na primeira vez o app monta o cenário, o que pode levar vários minutos.
+1. Download the APK from the link above.
+2. Copy the Victoria 2 folder to the device, for example to `Jogos/Victoria 2`. The right folder is the one containing `common`, `map` and `gfx`. Avoid the `Download` folder and the root of the storage, which the Android picker does not let you choose.
+3. Install the APK. You need to allow installation from unknown sources.
+4. Open the app, tap **Choose folder**, turn on **All files access**, go back to the app and choose the game folder.
+5. The first time, the app builds the scenario, which can take several minutes.
 
-## Controles
+## Controls
 
-| Gesto | Equivale a |
+| Gesture | Equivalent to |
 |---|---|
-| Toque rápido | Clique esquerdo |
-| Segurar parado por ~0,5 s | Clique direito |
-| Arrastar sobre a interface | Arrastar com o botão esquerdo |
-| Arrastar sobre o mapa | Mover o mapa |
-| Pinça com dois dedos | Zoom |
-| Toque com três dedos | Mostra ou esconde o contador de desempenho (FPS) |
-| Voltar | ESC (menu) |
+| Quick tap | Left click |
+| Press and hold still for ~0.5 s | Right click |
+| Drag over the interface | Drag with the left button |
+| Drag over the map | Move the map |
+| Two-finger pinch | Zoom |
+| Three-finger tap | Shows or hides the performance counter (FPS) |
+| Back | ESC (menu) |
 
-Mouse e teclado físicos também funcionam.
+Physical mouse and keyboard also work.
 
-## Mais informações
+## More information
 
-O [**android/README.md**](android/README.md) tem o resto: onde ficam saves e configurações, desempenho, limitações conhecidas, como compilar e como o port funciona por dentro.
+[**android/README.md**](android/README.md) has the rest: where saves and settings live, performance, known limitations, how to build, and how the port works internally.
 
-## Problemas?
+## Problems?
 
-Abra uma [issue](https://github.com/Vitorio-Kuroski/Project-Alice-mobile/issues) com a descrição. Se puder, anexe a saída de `adb logcat -s Alice`.
+Open an [issue](https://github.com/Vitorio-Kuroski/Project-Alice-mobile/issues) with a description. If you can, attach the output of `adb logcat -s Alice`.

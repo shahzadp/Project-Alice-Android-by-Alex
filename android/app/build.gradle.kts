@@ -1,14 +1,14 @@
-// App Android do Project Alice.
+// Project Alice Android app.
 //
-// O codigo nativo NAO e compilado pelo Gradle: a libAlice.so sai do build CMake
-// (preset android-arm64, ver CMakePresets.json) e e copiada para
-// app/src/main/jniLibs/<abi>/ pelo script android/collect-native-libs.sh.
-// O Gradle so empacota e assina o APK.
+// The native code is NOT compiled by Gradle: libAlice.so comes from the CMake build
+// (android-arm64 preset, see CMakePresets.json) and is copied to
+// app/src/main/jniLibs/<abi>/ by the android/collect-native-libs.sh script.
+// Gradle only packages and signs the APK.
 //
-// Os arquivos do proprio Alice (pasta assets/ do repositorio: shaders, fontes,
-// sons, localizacao) vao dentro do APK em assets/assets/... junto com uma lista
-// (alice_assets_manifest.txt); o C++ extrai tudo para o armazenamento interno
-// na primeira execucao e quando a lista muda (entry_point_android.cpp).
+// Alice's own files (the repository's assets/ folder: shaders, fonts,
+// sounds, localization) go inside the APK at assets/assets/... along with a list
+// (alice_assets_manifest.txt); C++ extracts everything to internal storage
+// on the first run and whenever the list changes (entry_point_android.cpp).
 
 import java.util.zip.CRC32
 
@@ -27,8 +27,8 @@ val prepareAliceAssets by tasks.registering {
         out.deleteRecursively()
         val dest = File(out, "assets")
         aliceAssetsSource.copyRecursively(dest, overwrite = true)
-        // lista "caminho<TAB>tamanho<TAB>crc32" -- o NDK nao consegue listar
-        // subpastas do APK, e o crc faz a extracao se repetir se algo mudar
+        // list "path<TAB>size<TAB>crc32" -- the NDK cannot list
+        // APK subfolders, and the crc makes the extraction repeat if anything changes
         val manifest = dest.walkTopDown()
             .filter { it.isFile }
             .map {
@@ -48,7 +48,7 @@ android {
 
     defaultConfig {
         applicationId = "org.projectalice.mobile"
-        minSdk = 30 // Android 11; ICU: ver src/text/icu_android_compat.hpp
+        minSdk = 30 // Android 11; ICU: see src/text/icu_android_compat.hpp
         targetSdk = 35
         versionCode = 5
         versionName = "0.6"
@@ -63,10 +63,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // Chave fixa: com ela todo APK sai com a mesma assinatura e uma versao nova
-    // instala por cima da anterior. O workflow a monta a partir dos segredos
-    // ANDROID_KEYSTORE_BASE64 e ANDROID_KEYSTORE_PASSWORD (ver android/README.md).
-    // Sem ALICE_KEYSTORE, assina com a chave de debug da maquina.
+    // Fixed key: with it every APK comes out with the same signature and a new version
+    // installs on top of the previous one. The workflow assembles it from the secrets
+    // ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD (see android/README.md).
+    // Without ALICE_KEYSTORE, it signs with the machine's debug key.
     val aliceKeystore = System.getenv("ALICE_KEYSTORE")?.takeIf { it.isNotEmpty() }
     signingConfigs {
         if (aliceKeystore != null) {
@@ -97,13 +97,13 @@ android {
     }
 
     androidResources {
-        // o padrao ignora arquivos comecando com "." e pastas com "_"
+        // the default ignores files starting with "." and folders with "_"
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
     }
 
     packaging {
         jniLibs {
-            // as .so ja chegam sem simbolos (strip no collect-native-libs.sh)
+            // the .so files already arrive without symbols (strip in collect-native-libs.sh)
             keepDebugSymbols += listOf("**/*.so")
         }
     }

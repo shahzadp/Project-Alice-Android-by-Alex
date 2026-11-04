@@ -11,7 +11,7 @@
 #elif defined(__ANDROID__)
 #include <unicode/ubrk.h>
 #include <unicode/utypes.h>
-// unicode/ubidi.h nao existe no NDK -- ver icu_android_compat.hpp
+// unicode/ubidi.h does not exist in the NDK -- see icu_android_compat.hpp
 #include "icu_android_compat.hpp"
 #else
 #include <unicode/ubrk.h>

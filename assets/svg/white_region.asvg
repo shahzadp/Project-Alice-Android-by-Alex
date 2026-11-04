@@ -3,6 +3,28 @@
 	viewBox = "0 0 [[W;1000;0]] [[H;1000;0]] " 
 	width = "[[W;1000;0]]" 
 	height = "[[H;1000;0]]" >  
-	
-	<rect fill="#fef7f0" x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" />
+
+	<!-- Victoria II style row header tab: tan parchment band, light top edge,
+	     dark rule below and a gold marker down the left side. This is the
+	     background of the "white window" template, which the budget window uses
+	     for its Tax / Education / Administration... rows and which the report
+	     windows use for their list headers and rows.
+
+	     The text drawn on it is the dark ink colour baked into the compiled
+	     templates, so the band has to stay light.
+
+	     Offsets are asvg units: 62.5 units = 1 px on the standard 8 px grid. -->
+
+	<defs>
+		<linearGradient id="tabband" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#dcd2b9" />
+			<stop offset="0.5" stop-color="#cec2a4" />
+			<stop offset="1" stop-color="#bba98a" />
+		</linearGradient>
+	</defs>
+
+	<rect x="0" y="0" width="[[W;1000;0]]" height="[[H;1000;0]]" fill="url(#tabband)" />
+	<rect x="0" y="0" width="[[W;1000;0]]" height="[[P;1;0]]" fill="#efe8d8" fill-opacity="0.65" />
+	<rect x="0" y="[[H;1000;-125]]" width="[[W;1000;0]]" height="[[P;2;0]]" fill="#8d7a58" fill-opacity="0.75" />
+	<rect x="0" y="0" width="[[P;3;0]]" height="[[H;1000;0]]" fill="#b09a68" />
 </svg>

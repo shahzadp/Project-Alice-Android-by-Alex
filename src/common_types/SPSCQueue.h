@@ -208,8 +208,8 @@ public:
 
 private:
 #if defined(__cpp_lib_hardware_interference_size) && !defined(__ANDROID__)
-  // no aarch64 o clang reporta 256 aqui, o que forca sys::state (alignas(64))
-  // a ter alinhamento 256 e quebra a compilacao; ARM de celular usa linha de 64
+  // on aarch64 clang reports 256 here, which forces sys::state (alignas(64)) to
+  // have 256-byte alignment and breaks the build; phone ARM uses a 64-byte line
   static constexpr size_t kCacheLineSize =
       std::hardware_destructive_interference_size;
 #else

@@ -15,7 +15,7 @@
 #elif defined(__ANDROID__)
 #include <unicode/ubrk.h>
 #include <unicode/utypes.h>
-// unicode/ubidi.h nao existe no NDK -- ver icu_android_compat.hpp
+// unicode/ubidi.h does not exist in the NDK -- see icu_android_compat.hpp
 #include "icu_android_compat.hpp"
 #else
 #include <unicode/ubrk.h>
@@ -447,8 +447,8 @@ void font_manager::change_locale(sys::state& state, dcon::locale_id l) {
 
 	{
 #ifdef __ANDROID__
-		// ubrk_getBinaryRules nao existe no NDK -- guarda [tipo][locale] pro
-		// ubrk_openBinaryRules() do icu_android_compat.hpp decodificar depois.
+		// ubrk_getBinaryRules does not exist in the NDK -- store [type][locale] so
+		// ubrk_openBinaryRules() in icu_android_compat.hpp can decode it later.
 		state.font_collection.compiled_ubrk_rules.clear();
 		state.font_collection.compiled_ubrk_rules.push_back(uint8_t(UBRK_LINE));
 		state.font_collection.compiled_ubrk_rules.insert(state.font_collection.compiled_ubrk_rules.end(), lang_str.begin(), lang_str.end());
