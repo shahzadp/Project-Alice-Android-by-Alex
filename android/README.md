@@ -297,9 +297,12 @@ One trade-off worth knowing: the text colour of every label is baked into the co
 | Tool | What it does |
 |---|---|
 | `tools/aui_dump.py assets/budgetwindow.aui` | decodes a compiled window: every element with its position, size, template id and texture |
+| `tools/aui_layout.py assets/budgetwindow.aui` | resolves the window's layout blob, i.e. where each element really ends up in pixels |
 | `tools/tui_dump.py assets/the.tui` | decodes the template library: backgrounds (which SVG each one is), colours, and the template to background mapping |
 | `tools/asvg_preview.py out.html` | substitutes the `[[W;...]]`/`[[H;...]]`/`[[P;...]]` placeholders so the `.asvg` chrome can be rendered in a browser and checked |
 | `tools/make_vic2_assets.py` | regenerates the missing control textures |
+
+The Victoria II charts use the engine's pie renderer: the budget's welfare panel draws one pie per stratum (`src/gui/budgetwindow.cpp`), and the population window gets Vic2's six demographic pies — workforce, religion, ideologies, nationalities, dominant issues and electorate, each with its own colour key — above the pop list (`src/gui/demographicswindow.cpp`). Both are data-driven and add themselves to the window at runtime, so no `.aui` file had to be rebuilt.
 
 In an `.asvg`, a placeholder resolves to `scale * axis + offset`, where `axis` is half the element size in grid units and one SVG unit is `500 / grid_size` pixels. On the standard 8 px grid one pixel is therefore `62.5` units, which is why the frame insets in those files are multiples of it.
 

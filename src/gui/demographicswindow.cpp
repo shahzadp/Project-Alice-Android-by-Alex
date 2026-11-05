@@ -1620,6 +1620,136 @@ struct demographicswindow_pops_header_cash_icon_t : public ui::element_base {
 	ui::message_result on_rbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 };
+// Victoria II style demographic pie charts.
+//
+// The Victoria II population window opens with six pie charts (workforce,
+// religion, ideologies, nationalities, dominant issues, electorate), each with a
+// colour key next to it. Alice's window only has the pop list, so these charts
+// are added here and placed in the strip below the list by
+// demographicswindow_main_t::on_create.
+namespace demo_chart_kind {
+enum class value { workforce, religion, ideology, culture, issues, electorate };
+}
+
+class demographics_chart_t : public ui::element_base {
+public:
+	demo_chart_kind::value kind = demo_chart_kind::value::workforce;
+	ogl::data_texture data_texture{ 200, 3 };
+	std::vector<std::pair<std::string, uint32_t>> legend;
+	void on_update(sys::state& state) noexcept override;
+	void render(sys::state& state, int32_t x, int32_t y) noexcept override;
+	ui::tooltip_behavior has_tooltip(sys::state& state) noexcept override {
+		return ui::tooltip_behavior::no_tooltip;
+	}
+	ui::message_result test_mouse(sys::state& state, int32_t x, int32_t y, ui::mouse_probe_type type) noexcept override {
+		return ui::message_result::unseen;
+	}
+};
+
+void demographics_chart_t::on_update(sys::state& state) noexcept {
+	auto nat = state.local_player_nation;
+	std::vector<std::pair<uint32_t, float>> entries;
+	legend.clear();
+
+	auto add = [&](uint32_t colour, float value, dcon::text_key key) {
+		if(value > 0.f) {
+			entries.emplace_back(colour, value);
+			legend.emplace_back(text::produce_simple_string(state, key), colour);
+		}
+	};
+
+	switch(kind) {
+	case demo_chart_kind::value::workforce:
+		for(auto pt : state.world.in_pop_type)
+			add(ogl::get_ui_color(state, pt.id),
+				state.world.nation_get_demographics(nat, demographics::to_key(state, pt.id)),
+				state.world.pop_type_get_name(pt.id));
+		break;
+	case demo_chart_kind::value::religion:
+		for(auto r : state.world.in_religion)
+			add(ogl::get_ui_color(state, r.id),
+				state.world.nation_get_demographics(nat, demographics::to_key(state, r.id)),
+				state.world.religion_get_name(r.id));
+		break;
+	case demo_chart_kind::value::ideology:
+		for(auto i : state.world.in_ideology)
+			add(ogl::get_ui_color(state, i.id),
+				state.world.nation_get_demographics(nat, demographics::to_key(state, i.id)),
+				state.world.ideology_get_name(i.id));
+		break;
+	case demo_chart_kind::value::culture:
+		for(auto c : state.world.in_culture)
+			add(ogl::get_ui_color(state, c.id),
+				state.world.nation_get_demographics(nat, demographics::to_key(state, c.id)),
+				state.world.culture_get_name(c.id));
+		break;
+	case demo_chart_kind::value::issues:
+		for(auto io : state.world.in_issue_option)
+			add(ogl::get_ui_color(state, io.id),
+				state.world.nation_get_demographics(nat, demographics::to_key(state, io.id)),
+				state.world.issue_option_get_name(io.id));
+		break;
+	case demo_chart_kind::value::electorate:
+		for(auto i : state.world.in_ideology)
+			add(ogl::get_ui_color(state, i.id),
+				state.world.nation_get_upper_house(nat, i.id),
+				state.world.ideology_get_name(i.id));
+		break;
+	}
+
+	// biggest slice first, so the pie and the key read in the same order
+	std::vector<size_t> order(entries.size());
+	for(size_t i = 0; i < order.size(); ++i)
+		order[i] = i;
+	std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return entries[a].second > entries[b].second; });
+
+	std::vector<std::pair<uint32_t, float>> sorted_entries;
+	std::vector<std::pair<std::string, uint32_t>> sorted_legend;
+	float total = 0.f;
+	for(auto& e : entries)
+		total += e.second;
+	for(auto i : order) {
+		sorted_entries.push_back(entries[i]);
+		sorted_legend.emplace_back(legend[i].first, legend[i].second);
+	}
+
+	budget_pie::fill(data_texture, sorted_entries);
+
+	// the key only has room for the six largest entries
+	legend.clear();
+	for(size_t i = 0; i < sorted_entries.size() && legend.size() < 6; ++i) {
+		auto pct = total > 0.f ? text::format_percentage(sorted_entries[i].second / total, 1) : std::string();
+		legend.emplace_back(sorted_legend[i].first + " " + pct, sorted_legend[i].second);
+	}
+}
+
+void demographics_chart_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	auto diameter = float(base_data.size.y);
+	ogl::render_piechart(state, ogl::color_modification::none, float(x), float(y), diameter, data_texture);
+
+	auto fh = text::make_font_id(state, false, 1.0f * 12);
+	auto line_height = state.font_collection.line_height(state, fh);
+	auto text_x = float(x) + diameter + 6.f;
+	auto text_y = float(y) + 1.f;
+
+	for(auto& e : legend) {
+		ogl::render_alpha_colored_rect(state,
+			text_x, text_y + line_height * 0.3f, 5.f, 5.f,
+			float(e.second & 0xFF) / 255.f, float((e.second >> 8) & 0xFF) / 255.f, float((e.second >> 16) & 0xFF) / 255.f, 1.f);
+
+		text::layout lay;
+		text::single_line_layout sl{ lay,
+			text::layout_parameters{ 0, 0, int16_t(base_data.size.x - int32_t(diameter) - 12), int16_t(line_height),
+				fh, 0, text::alignment::left, text::text_color::black, true, true },
+			state_is_rtl(state) ? text::layout_base::rtl_status::rtl : text::layout_base::rtl_status::ltr };
+		sl.add_text(state, e.first);
+		for(auto& t : lay.contents)
+			ui::render_text_chunk(state, t, text_x + 8.f + float(t.x), text_y + float(t.y), fh,
+				ogl::color3f{ 0.196f, 0.157f, 0.122f }, ogl::color_modification::none);
+		text_y += line_height;
+	}
+}
+
 struct demographicswindow_main_t : public layout_window_element {
 // BEGIN main::variables
 // END
@@ -1628,6 +1758,7 @@ struct demographicswindow_main_t : public layout_window_element {
 	ui::element_base* focus_w;
 	ankerl::unordered_dense::map<std::string, std::unique_ptr<ui::lua_scripted_element>> scripted_elements;
 	std::unique_ptr<template_label> title;
+	std::vector<std::unique_ptr<ui::element_base>> demo_charts;
 	std::unique_ptr<demographicswindow_main_show_filters_t> show_filters;
 	std::unique_ptr<demographicswindow_main_reset_filters_t> reset_filters;
 	std::unique_ptr<demographicswindow_main_only_pops_toggle_t> only_pops_toggle;
@@ -3028,6 +3159,41 @@ void demographicswindow_main_t::on_create(sys::state& state) noexcept {
 	page_right_texture_key = win_data.page_right_texture;
 	page_text_color = win_data.page_text_color;
 	create_layout_level(state, layout, win_data.layout_data, win_data.layout_data_size);
+
+	// Victoria II opens its population window with six demographic pie charts
+	// above the list. Reserve a strip at the bottom of the window for them (the
+	// pop list keeps the rest) and add the charts as absolutely positioned
+	// controls, so nothing about the list's own layout changes.
+	constexpr int16_t chart_row_height = 92;
+	constexpr int16_t chart_strip_height = chart_row_height * 2 + 12;
+	if(auto list_height = int16_t(base_data.size.y - chart_strip_height); list_height > 0) {
+		layout.size_y = list_height;
+
+		constexpr demo_chart_kind::value kinds[] = {
+			demo_chart_kind::value::workforce,
+			demo_chart_kind::value::religion,
+			demo_chart_kind::value::ideology,
+			demo_chart_kind::value::culture,
+			demo_chart_kind::value::issues,
+			demo_chart_kind::value::electorate
+		};
+		for(int32_t i = 0; i < int32_t(std::size(kinds)); ++i) {
+			auto chart = std::make_unique<demographics_chart_t>();
+			chart->parent = this;
+			chart->kind = kinds[i];
+			chart->base_data.size.x = 380;
+			chart->base_data.size.y = chart_row_height - 8;
+
+			layout_control item;
+			item.ptr = chart.get();
+			item.abs_x = int16_t(12 + (i % 3) * 392);
+			item.abs_y = int16_t(list_height + 4 + (i / 3) * chart_row_height);
+			item.absolute_position = true;
+			layout.contents.push_back(item);
+
+			demo_charts.push_back(std::move(chart));
+		}
+	}
 // BEGIN main::create
 	{
 		auto ptr = make_demographicswindow_filters_window(state);
