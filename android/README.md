@@ -157,6 +157,95 @@ To validate the shaders after changing them (requires `glslang-tools`):
 android/validate-shaders.sh
 ```
 
+### Building locally on Windows
+
+The three stages above work on Windows as well, with different commands. The host tools
+are built with MSVC instead of clang, LuaJIT is built by its own Makefile (which needs
+`make` and a POSIX shell), and the paths are the usual Windows ones.
+
+#### What you need
+
+| What | Notes |
+|---|---|
+| JDK 17 or newer | AGP 8.10 requires 17; the build below was verified with 21 |
+| Android SDK (platform 35, build-tools 35) | pointed to by `$env:ANDROID_HOME` |
+| Android NDK r29 (`ndk\29.0.14206865`) | pointed to by `$env:ANDROID_NDK` |
+| Visual Studio Build Tools (MSVC) | builds the 5 host tools |
+| MinGW-w64 gcc, **in a path without spaces** | builds LuaJIT's host tools |
+| GNU make and a POSIX shell (`sh`, `rm`, `sed`, `install`) | LuaJIT's Makefile |
+| Git for Windows | provides `sh`/`rm`/`sed`/`install` and `collect-native-libs.sh` |
+
+#### The commands
+
+```powershell
+# 0. environment
+$env:ANDROID_HOME = 'D:\dev\SDKs\android-sdk'
+$env:ANDROID_NDK  = 'D:\dev\SDKs\android-sdk\ndk\29.0.14206865'
+$env:GRADLE_USER_HOME = 'D:\dev\BuildTools\gradle'
+$env:JAVA_HOME = 'D:\dev\BuildTools\gradle\jdks\eclipse_adoptium-21-amd64-windows.2'
+
+# space-free gcc first, then make, then the POSIX tools of Git for Windows
+$env:PATH = 'D:\dev\BuildTools\mingw64\bin;D:\dev\BuildTools\bin;' + $env:PATH + ';C:\Program Files\Git\usr\bin'
+
+# 1. code generation tools (MSVC; the CI uses the "Visual Studio 18 2026" generator,
+#    with VS 2022 Build Tools it is "Visual Studio 17 2022")
+cmake -G "Visual Studio 17 2022" --preset=x64-debug-windows -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+$tools = @('ParserGenerator','DCONGENERATOR','DCONINTERFACEGEN','DataContainer-Lua','DataContainer_OOS_Reporter')
+& cmake --build "out/build/x64-debug-windows" --config Debug --target $tools
+New-Item -ItemType Directory native-tools -Force
+foreach ($t in $tools) {
+  Copy-Item (Get-ChildItem -Recurse -File out\build\x64-debug-windows -Filter "$t.exe") native-tools
+}
+
+# 2. the native library (see the traps below before running this)
+$env:GIT_RELVER = '[ -e ../.git ] && git show -s --format=%ct >luajit_relver.txt 2>/dev/null || cat ../.relver >luajit_relver.txt 2>/dev/null || :'
+$env:MAKEFLAGS = '-e'
+cmake --preset=android-arm64-release "-DALICE_NATIVE_TOOLS_DIR=$PWD/native-tools"
+& cmake --build "out/build/android-arm64-release" --target Alice -- -j2
+
+# 3. the APK
+& 'C:\Program Files\Git\bin\bash.exe' android/collect-native-libs.sh out/build/android-arm64-release
+Set-Location android; .\gradlew.bat assembleRelease   # -> app/build/outputs/apk/release/app-release.apk
+```
+
+#### Three Windows traps
+
+All three are silent killers: the build stops with an error that points somewhere else.
+
+1. **gcc must not live under a path with spaces.** A MinGW-w64 installed under
+   `C:\Users\<a name with a space>\...` cannot link at all: `ld` gets its `-L`
+   arguments split at the space and fails with
+   `C:/Users/<name>: file format not recognized`. Copy the toolchain to a
+   space-free path (e.g. `D:\dev\BuildTools\mingw64`) and put its `bin` first on
+   `PATH`.
+
+2. **`make` is not part of a normal Windows install**, and LuaJIT's Makefile does
+   not work with `cmd.exe`. Put `mingw32-make.exe` on `PATH` under the name
+   `make.exe`, and add a POSIX shell: Git for Windows ships `sh`, `rm`, `sed`,
+   `install` and `ln` in `usr\bin`. LuaJIT then builds its host tools
+   (`minilua`, `buildvm`) with that gcc.
+
+3. **LuaJIT's Makefile emits `cmd.exe` syntax** for the version step
+   (`if exist ..\.git ( ... ) else ( ... )`), which fails under `sh`. Override the
+   variable with the POSIX variant and make the environment win:
+
+   ```powershell
+   $env:GIT_RELVER = '[ -e ../.git ] && git show -s --format=%ct >luajit_relver.txt 2>/dev/null || cat ../.relver >luajit_relver.txt 2>/dev/null || :'
+   $env:MAKEFLAGS = '-e'
+   ```
+
+   `MAKEFLAGS=-e` is what makes `make` prefer the environment over the Makefile;
+   without it the Makefile's Windows branch wins.
+
+Also worth knowing:
+
+- Quote `-D` arguments in PowerShell (`"-DFOO=bar"`). An unquoted one can be split
+  and CMake then reads a stray path as the source directory.
+- `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` keeps the older fetched dependencies working
+  with CMake 4.x; the Android preset already sets it.
+- A release build of `main.cpp` needs several GB of RAM in the compiler. On a small
+  machine build with `-j1`.
+
 ### How the port works
 
 The native code is built by CMake, not by Gradle. Gradle only packages the `.so`, the Java Activity and Alice's files, and signs the APK.
