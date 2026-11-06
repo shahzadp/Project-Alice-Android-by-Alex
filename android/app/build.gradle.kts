@@ -66,21 +66,25 @@ android {
     // Fixed key: with it every APK comes out with the same signature and a new version
     // installs on top of the previous one. The workflow assembles it from the secrets
     // ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD (see android/README.md).
-    // Without ALICE_KEYSTORE, it signs with the machine's debug key.
-    val aliceKeystore = System.getenv("ALICE_KEYSTORE")?.takeIf { it.isNotEmpty() }
+    // Locally it is also picked up from android/alice-release.jks when present.
+    // Without a key, it signs with the machine's debug key.
+    val aliceKeystorePassword = System.getenv("ALICE_KEYSTORE_PASSWORD")
+    val aliceKeystorePath = System.getenv("ALICE_KEYSTORE")?.takeIf { it.isNotEmpty() } ?: "alice-release.jks"
+    val aliceKeystoreFile = file(aliceKeystorePath)
+    val hasAliceKey = aliceKeystoreFile.exists() && !aliceKeystorePassword.isNullOrEmpty()
     signingConfigs {
-        if (aliceKeystore != null) {
+        if (hasAliceKey) {
             create("alice") {
-                storeFile = file(aliceKeystore)
-                storePassword = System.getenv("ALICE_KEYSTORE_PASSWORD")
+                storeFile = aliceKeystoreFile
+                storePassword = aliceKeystorePassword
                 keyAlias = System.getenv("ALICE_KEY_ALIAS") ?: "alice"
-                keyPassword = System.getenv("ALICE_KEY_PASSWORD") ?: System.getenv("ALICE_KEYSTORE_PASSWORD")
+                keyPassword = System.getenv("ALICE_KEY_PASSWORD") ?: aliceKeystorePassword
             }
         }
     }
 
     buildTypes {
-        val signing = signingConfigs.getByName(if (aliceKeystore != null) "alice" else "debug")
+        val signing = signingConfigs.getByName(if (hasAliceKey) "alice" else "debug")
         debug {
             signingConfig = signing
         }
