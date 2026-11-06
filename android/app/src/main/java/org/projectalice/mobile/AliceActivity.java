@@ -225,7 +225,7 @@ public class AliceActivity extends NativeActivity {
 	private void showFolderDialog(String reason) {
 		if(folderDialog != null && folderDialog.isShowing())
 			folderDialog.dismiss();
-		String message = "Project Alice needs the Victoria 2 files (with the expansions).\n\n"
+		String message = "Project Alice by Alex needs the Victoria 2 files (with the expansions).\n\n"
 			+ "Copy the game folder to the device and choose it on the next screen "
 			+ "(the folder that contains \"common\", \"map\" and \"gfx\").";
 		if(reason != null && !reason.isEmpty())

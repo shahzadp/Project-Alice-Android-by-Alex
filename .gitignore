@@ -398,3 +398,5 @@ FodyWeavers.xsd
 *.p12
 *.jks
 *.keystore
+*.b64
+password.txt

@@ -172,7 +172,7 @@ bool extract_alice_assets() {
 		return true;
 	}
 
-	show_progress("Preparing the Project Alice files...");
+	show_progress("Preparing the Project Alice by Alex files...");
 	// the old list goes away first: if the extraction is interrupted, it restarts next time
 	unlink(extracted_manifest_path.c_str());
 
@@ -395,9 +395,9 @@ void need_folder(std::string const& reason) {
 }
 
 void run_loader() {
-	show_progress("Opening Project Alice...");
+	show_progress("Opening Project Alice by Alex...");
 	if(!extract_alice_assets()) {
-		fail("Could not prepare the Project Alice files (out of free space?).");
+		fail("Could not prepare the Project Alice by Alex files (out of free space?).");
 		return;
 	}
 
