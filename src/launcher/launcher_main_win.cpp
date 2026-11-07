@@ -1,4 +1,4 @@
-#ifndef UNICODE
+﻿#ifndef UNICODE
 #define UNICODE
 #endif
 #define NOMINMAX
@@ -1063,12 +1063,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 				launcher::ogl::font_collection.load_font(launcher::ogl::fonts[1], file_content.data, file_content.file_size);
 			}
 		} else if(font_set_load == 1) { //chinese
-			auto font_a = simple_fs::open_file(root, NATIVE("assets/fonts/STZHONGS.TTF"));
+			auto font_a = simple_fs::open_file(root, NATIVE("assets/fonts/NotoSerifSC-Regular.otf"));
 			if(font_a) {
 				auto file_content = simple_fs::view_contents(*font_a);
 				launcher::ogl::font_collection.load_font(launcher::ogl::fonts[0], file_content.data, file_content.file_size);
 			}
-			auto font_b = simple_fs::open_file(root, NATIVE("assets/fonts/STZHONGS.TTF"));
+			auto font_b = simple_fs::open_file(root, NATIVE("assets/fonts/NotoSerifSC-Regular.otf"));
 			if(font_b) {
 				auto file_content = simple_fs::view_contents(*font_b);
 				launcher::ogl::font_collection.load_font(launcher::ogl::fonts[1], file_content.data, file_content.file_size);

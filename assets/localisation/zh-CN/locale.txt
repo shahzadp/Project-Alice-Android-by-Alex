@@ -1,11 +1,11 @@
 display_name = "中文（中国）"
 script = Hani
 
-body_font = STZHONGS.TTF
+body_font = NotoSerifSC-Regular.otf
 
-header_font = STZHONGS.TTF
+header_font = NotoSerifSC-Bold.otf
 
-map_font = STXINWEI.TTF
+map_font = NotoSerifSC-Bold.otf
 
 prevent_map_letterspacing = no
 rtl = no
