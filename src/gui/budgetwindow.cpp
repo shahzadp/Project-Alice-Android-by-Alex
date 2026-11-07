@@ -60,10 +60,11 @@ struct budgetwindow_main_admin_eff_amount_t : public alice_ui::template_label {
 // Victoria II style pie charts.
 //
 // Vic2 shows the population of a stratum as a pie chart made of the colours of
-// the pop types inside it. The engine's pie renderer (ogl::render_piechart)
-// walks a fixed number of colour slices in a data texture, so the distribution
-// is rasterised here exactly like ui::piechart does it: one slice per 1/200th of
-// the circle, in pop-type colour order.
+// the pop types inside it, next to the tax row of that stratum. The engine's pie
+// renderer (ogl::render_piechart) walks a fixed number of colour slices in a
+// data texture, so the distribution is rasterised here exactly like
+// ui::piechart does it: one slice per 1/200th of the circle, in pop-type colour
+// order.
 namespace budget_pie {
 inline constexpr size_t resolution = 200;
 inline constexpr size_t channels = 3;
@@ -103,8 +104,8 @@ inline void fill(ogl::data_texture& texture, std::vector<std::pair<uint32_t, flo
 }
 
 // population of one stratum, split by pop type and coloured the way the game
-// colours pop types
-inline void update_strata_pie(sys::state& state, ogl::data_texture& texture, culture::pop_strata strata) {
+// colours pop types; returns false when the stratum has no population at all
+inline bool update_strata_pie(sys::state& state, ogl::data_texture& texture, culture::pop_strata strata) {
 	std::vector<std::pair<uint32_t, float>> entries;
 	for(auto pt : state.world.in_pop_type) {
 		if(state.world.pop_type_get_strata(pt.id) != uint8_t(strata))
@@ -114,13 +115,16 @@ inline void update_strata_pie(sys::state& state, ogl::data_texture& texture, cul
 			entries.emplace_back(ogl::get_ui_color(state, pt.id), volume);
 	}
 	fill(texture, entries);
+	return !entries.empty();
 }
 }
 
 struct budgetwindow_main_welfare_chart_poor_t : public ui::element_base {
 // BEGIN main::welfare_chart_poor::variables
 // END
-	ogl::data_texture data_texture{ 200, 3 };
+	ogl::lines lines{ 32 };
+	ogl::color4f line_color{ 0.682353f, 0.125490f, 0.070588f, 1.000000f };
+	void set_data_points(sys::state& state, std::vector<float> const& datapoints, float min, float max);
 	void on_create(sys::state& state) noexcept override;
 	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	ui::tooltip_behavior has_tooltip(sys::state & state) noexcept override {
@@ -144,7 +148,9 @@ struct budgetwindow_main_welfare_chart_poor_t : public ui::element_base {
 struct budgetwindow_main_welfare_chart_middle_t : public ui::element_base {
 // BEGIN main::welfare_chart_middle::variables
 // END
-	ogl::data_texture data_texture{ 200, 3 };
+	ogl::lines lines{ 32 };
+	ogl::color4f line_color{ 0.933333f, 0.607843f, 0.000000f, 1.000000f };
+	void set_data_points(sys::state& state, std::vector<float> const& datapoints, float min, float max);
 	void on_create(sys::state& state) noexcept override;
 	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	ui::tooltip_behavior has_tooltip(sys::state & state) noexcept override {
@@ -168,7 +174,9 @@ struct budgetwindow_main_welfare_chart_middle_t : public ui::element_base {
 struct budgetwindow_main_welfare_chart_rich_t : public ui::element_base {
 // BEGIN main::welfare_chart_rich::variables
 // END
-	ogl::data_texture data_texture{ 200, 3 };
+	ogl::lines lines{ 32 };
+	ogl::color4f line_color{ 0.039216f, 0.576471f, 0.588235f, 1.000000f };
+	void set_data_points(sys::state& state, std::vector<float> const& datapoints, float min, float max);
 	void on_create(sys::state& state) noexcept override;
 	void render(sys::state & state, int32_t x, int32_t y) noexcept override;
 	ui::tooltip_behavior has_tooltip(sys::state & state) noexcept override {
@@ -554,6 +562,12 @@ struct budgetwindow_section_header_t : public layout_window_element {
 // BEGIN section_header::variables
 // END
 	int32_t section_type;
+	// the tax rows carry a pie of the stratum that pays them (Vic2 style); it
+	// sits in the corner of the expand arrow, which hides behind it while the
+	// pie is shown
+	ogl::data_texture strata_texture{ 200, 3 };
+	ogl::data_texture strata_border_texture{ 200, 3 };
+	bool strata_has_data = false;
 	ankerl::unordered_dense::map<std::string, std::unique_ptr<ui::lua_scripted_element>> scripted_elements;
 	std::unique_ptr<budgetwindow_section_header_label_t> label;
 	std::unique_ptr<budgetwindow_section_header_llbutton_t> llbutton;
@@ -570,6 +584,7 @@ struct budgetwindow_section_header_t : public layout_window_element {
 	void on_create(sys::state& state) noexcept override;
 	ui::message_result on_lbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept override;
 	ui::message_result on_rbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept override;
+	void render(sys::state& state, int32_t x, int32_t y) noexcept override;
 	void on_update(sys::state& state) noexcept override;
 	void* get_by_name(sys::state& state, std::string_view name_parameter) noexcept override {
 		if(name_parameter == "section_type") {
@@ -1484,15 +1499,69 @@ ui::message_result budgetwindow_main_welfare_chart_poor_t::on_lbutton_down(sys::
 ui::message_result budgetwindow_main_welfare_chart_poor_t::on_rbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept {
 	return ui::message_result::unseen;
 }
+void budgetwindow_main_welfare_chart_poor_t::set_data_points(sys::state& state, std::vector<float> const& datapoints, float min, float max) {
+	assert(datapoints.size() == 32);
+	float y_height = max - min;
+	std::vector<float> scaled_datapoints = std::vector<float>(32);
+	if(y_height == 0.f) {
+		for(size_t i = 0; i < 32; i++) {
+			scaled_datapoints[i] = .5f;
+		}
+	} else {
+		for(size_t i = 0; i < 32; i++) {
+			scaled_datapoints[i] = (datapoints[i] - min) / y_height;
+		}
+	}
+	lines.set_y(scaled_datapoints.data());
+}
 void budgetwindow_main_welfare_chart_poor_t::render(sys::state & state, int32_t x, int32_t y) noexcept {
-	// The three strata charts share a single box in the window definition (as
-	// overlaid Vic2 line graphs did), so each pie draws in its own third of it.
-	auto third = float(base_data.size.x) / 3.0f;
-	ogl::render_piechart(state, ogl::color_modification::none, float(x), float(y), third, data_texture);
+	ogl::render_linegraph(state, ogl::color_modification::none, float(x), float(y), base_data.size.x, base_data.size.y, line_color.r, line_color.g, line_color.b, line_color.a, lines);
 }
 void budgetwindow_main_welfare_chart_poor_t::on_update(sys::state& state) noexcept {
+	budgetwindow_main_t& main = *((budgetwindow_main_t*)(parent));
 // BEGIN main::welfare_chart_poor::update
-	budget_pie::update_strata_pie(state, data_texture, culture::pop_strata::poor);
+	float min = 0.f;
+	float max = 0.f;
+	for(auto prov : state.world.nation_get_province_ownership(state.local_player_nation)) {
+
+		for(auto pop_loc : prov.get_province().get_pop_location()) {
+			auto pop_id = pop_loc.get_pop();
+			auto pop_strata = state.world.pop_type_get_strata(state.world.pop_get_poptype(pop_id));
+			auto pop_size = pop_strata == uint8_t(culture::pop_strata::poor) ? state.world.pop_get_size(pop_id) : 0.f;
+
+			max += pop_size;
+		}
+	}
+
+	std::vector<float> datapoints(32);
+
+	float integral = 0.f;
+	float total_area = 0.f;
+
+	for(uint32_t i = 0; i < 32; ++i) {
+		float cutoff = (float)i / 32 + 0.01f;
+		float value = 0.f;
+
+		for(auto prov : state.world.nation_get_province_ownership(state.local_player_nation)) {
+
+			for(auto pop_loc : prov.get_province().get_pop_location()) {
+				auto pop_id = pop_loc.get_pop();
+				auto pop_strata = state.world.pop_type_get_strata(state.world.pop_get_poptype(pop_id));
+				auto pop_size = pop_strata == uint8_t(culture::pop_strata::poor) ? state.world.pop_get_size(pop_id) : 0.f;
+
+				float total = state.world.pop_get_satisfaction(pop_id);
+
+				if(total >= cutoff)
+					value += pop_size;
+
+				integral += total / 3.f * pop_size;
+				total_area += pop_size;
+			}
+		}
+
+		datapoints[i] = value;
+	}
+	set_data_points(state, datapoints, min, max);
 // END
 }
 void budgetwindow_main_welfare_chart_poor_t::on_create(sys::state& state) noexcept {
@@ -1505,13 +1574,72 @@ ui::message_result budgetwindow_main_welfare_chart_middle_t::on_lbutton_down(sys
 ui::message_result budgetwindow_main_welfare_chart_middle_t::on_rbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept {
 	return ui::message_result::unseen;
 }
+void budgetwindow_main_welfare_chart_middle_t::set_data_points(sys::state& state, std::vector<float> const& datapoints, float min, float max) {
+	assert(datapoints.size() == 32);
+	float y_height = max - min;
+	std::vector<float> scaled_datapoints = std::vector<float>(32);
+	if(y_height == 0.f) {
+		for(size_t i = 0; i < 32; i++) {
+			scaled_datapoints[i] = .5f;
+		}
+	} else {
+		for(size_t i = 0; i < 32; i++) {
+			scaled_datapoints[i] = (datapoints[i] - min) / y_height;
+		}
+	}
+	lines.set_y(scaled_datapoints.data());
+}
 void budgetwindow_main_welfare_chart_middle_t::render(sys::state & state, int32_t x, int32_t y) noexcept {
-	auto third = float(base_data.size.x) / 3.0f;
-	ogl::render_piechart(state, ogl::color_modification::none, float(x) + third, float(y), third, data_texture);
+	ogl::render_linegraph(state, ogl::color_modification::none, float(x), float(y), base_data.size.x, base_data.size.y, line_color.r, line_color.g, line_color.b, line_color.a, lines);
 }
 void budgetwindow_main_welfare_chart_middle_t::on_update(sys::state& state) noexcept {
+	budgetwindow_main_t& main = *((budgetwindow_main_t*)(parent));
 // BEGIN main::welfare_chart_middle::update
-	budget_pie::update_strata_pie(state, data_texture, culture::pop_strata::middle);
+	float min = 0.f;
+	float max = 0.f;
+	for(auto prov : state.world.nation_get_province_ownership(state.local_player_nation)) {
+
+		for(auto pop_loc : prov.get_province().get_pop_location()) {
+			auto pop_id = pop_loc.get_pop();
+			auto pop_strata = state.world.pop_type_get_strata(state.world.pop_get_poptype(pop_id));
+			auto pop_size = pop_strata == uint8_t(culture::pop_strata::middle) ? state.world.pop_get_size(pop_id) : 0.f;
+
+			max += pop_size;
+		}
+	}
+
+	std::vector<float> datapoints(32);
+
+	float integral = 0.f;
+	float total_area = 0.f;
+
+	for(uint32_t i = 0; i < 32; ++i) {
+		float cutoff = (float)i / 32 + 0.01f;
+		float value = 0.f;
+
+		for(auto prov : state.world.nation_get_province_ownership(state.local_player_nation)) {
+
+			for(auto pop_loc : prov.get_province().get_pop_location()) {
+				auto pop_id = pop_loc.get_pop();
+				auto pop_strata = state.world.pop_type_get_strata(state.world.pop_get_poptype(pop_id));
+				auto pop_size = pop_strata == uint8_t(culture::pop_strata::middle) ? state.world.pop_get_size(pop_id) : 0.f;
+
+				float total =
+					pop_demographics::get_luxury_needs(state, pop_id)
+					+ pop_demographics::get_everyday_needs(state, pop_id)
+					+ pop_demographics::get_life_needs(state, pop_id);
+
+				if(total / 3.f >= cutoff)
+					value += pop_size;
+
+				integral += total / 3.f * pop_size;
+				total_area += pop_size;
+			}
+		}
+
+		datapoints[i] = value;
+	}
+	set_data_points(state, datapoints, min, max);
 // END
 }
 void budgetwindow_main_welfare_chart_middle_t::on_create(sys::state& state) noexcept {
@@ -1524,13 +1652,72 @@ ui::message_result budgetwindow_main_welfare_chart_rich_t::on_lbutton_down(sys::
 ui::message_result budgetwindow_main_welfare_chart_rich_t::on_rbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept {
 	return ui::message_result::unseen;
 }
+void budgetwindow_main_welfare_chart_rich_t::set_data_points(sys::state& state, std::vector<float> const& datapoints, float min, float max) {
+	assert(datapoints.size() == 32);
+	float y_height = max - min;
+	std::vector<float> scaled_datapoints = std::vector<float>(32);
+	if(y_height == 0.f) {
+		for(size_t i = 0; i < 32; i++) {
+			scaled_datapoints[i] = .5f;
+		}
+	} else {
+		for(size_t i = 0; i < 32; i++) {
+			scaled_datapoints[i] = (datapoints[i] - min) / y_height;
+		}
+	}
+	lines.set_y(scaled_datapoints.data());
+}
 void budgetwindow_main_welfare_chart_rich_t::render(sys::state & state, int32_t x, int32_t y) noexcept {
-	auto third = float(base_data.size.x) / 3.0f;
-	ogl::render_piechart(state, ogl::color_modification::none, float(x) + third * 2.0f, float(y), third, data_texture);
+	ogl::render_linegraph(state, ogl::color_modification::none, float(x), float(y), base_data.size.x, base_data.size.y, line_color.r, line_color.g, line_color.b, line_color.a, lines);
 }
 void budgetwindow_main_welfare_chart_rich_t::on_update(sys::state& state) noexcept {
+	budgetwindow_main_t& main = *((budgetwindow_main_t*)(parent));
 // BEGIN main::welfare_chart_rich::update
-	budget_pie::update_strata_pie(state, data_texture, culture::pop_strata::rich);
+	float min = 0.f;
+	float max = 0.f;
+	for(auto prov : state.world.nation_get_province_ownership(state.local_player_nation)) {
+
+		for(auto pop_loc : prov.get_province().get_pop_location()) {
+			auto pop_id = pop_loc.get_pop();
+			auto pop_strata = state.world.pop_type_get_strata(state.world.pop_get_poptype(pop_id));
+			auto pop_size = pop_strata == uint8_t(culture::pop_strata::rich) ? state.world.pop_get_size(pop_id) : 0.f;
+
+			max += pop_size;
+		}
+	}
+
+	std::vector<float> datapoints(32);
+
+	float integral = 0.f;
+	float total_area = 0.f;
+
+	for(uint32_t i = 0; i < 32; ++i) {
+		float cutoff = (float)i / 32 + 0.01f;
+		float value = 0.f;
+
+		for(auto prov : state.world.nation_get_province_ownership(state.local_player_nation)) {
+
+			for(auto pop_loc : prov.get_province().get_pop_location()) {
+				auto pop_id = pop_loc.get_pop();
+				auto pop_strata = state.world.pop_type_get_strata(state.world.pop_get_poptype(pop_id));
+				auto pop_size = pop_strata == uint8_t(culture::pop_strata::rich) ? state.world.pop_get_size(pop_id) : 0.f;
+
+				float total =
+					pop_demographics::get_luxury_needs(state, pop_id)
+					+ pop_demographics::get_everyday_needs(state, pop_id)
+					+ pop_demographics::get_life_needs(state, pop_id);
+
+				if(total / 3.f >= cutoff)
+					value += pop_size;
+
+				integral += total / 3.f * pop_size;
+				total_area += pop_size;
+			}
+		}
+
+		datapoints[i] = value;
+	}
+	set_data_points(state, datapoints, min, max);
 // END
 }
 void budgetwindow_main_welfare_chart_rich_t::on_create(sys::state& state) noexcept {
@@ -3242,15 +3429,37 @@ void budgetwindow_section_header_max_setting_t::on_update(sys::state& state) noe
 // END
 }
 ui::message_result budgetwindow_section_header_t::on_lbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept {
+	// the tax rows have no expand arrow any more; their stratum pie sits in that
+	// corner and doubles as the expand/collapse control for the province list
+	if(x < 40 && (section_type == budget_categories::poor_tax || section_type == budget_categories::middle_tax || section_type == budget_categories::rich_tax)) {
+		budget_categories::expanded[section_type] = !budget_categories::expanded[section_type];
+		state.game_state_updated.store(true, std::memory_order::release);
+	}
 	return ui::message_result::consumed;
 }
 ui::message_result budgetwindow_section_header_t::on_rbutton_down(sys::state& state, int32_t x, int32_t y, sys::key_modifiers mods) noexcept {
 	return ui::message_result::consumed;
 }
+void budgetwindow_section_header_t::render(sys::state& state, int32_t x, int32_t y) noexcept {
+	layout_window_element::render(state, x, y);
+	if(!strata_has_data)
+		return;
+	// Vic2 puts the pie of the stratum on the left of its tax row, in the corner
+	// where the expand arrow normally sits. While the pie is shown the arrow is
+	// hidden and the header itself turns a tap on that corner into expand/collapse.
+	// A one-pixel dark disc behind the pie gives it the ring Vic2 draws, so the
+	// slices do not blend into the parchment header.
+	ogl::render_piechart(state, ogl::color_modification::none, float(x) + 4.f, float(y) + 4.f, 32.f, strata_border_texture);
+	ogl::render_piechart(state, ogl::color_modification::none, float(x) + 5.f, float(y) + 5.f, 30.f, strata_texture);
+}
 void budgetwindow_section_header_t::on_update(sys::state& state) noexcept {
 	budgetwindow_main_t& main = *((budgetwindow_main_t*)(parent->parent));
 // BEGIN section_header::update
 // END
+	strata_has_data = false;
+	// pie charts removed; restore the expand arrow
+	if(expand_button)
+		expand_button->set_visible(state, true);
 	remake_layout(state, true);
 }
 void budgetwindow_section_header_t::create_layout_level(sys::state& state, layout_level& lvl, char const* ldata, size_t sz) {
